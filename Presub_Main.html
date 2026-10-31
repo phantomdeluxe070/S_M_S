@@ -1,0 +1,3451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Presub &bull; SubAdmin Subscription Platform</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            sidebar: '#0b1120',
+            sidebarHover: '#172033',
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            },
+            admin: {
+              50: '#fdf4ff',
+              100: '#fae8ff',
+              500: '#a855f7',
+              600: '#9333ea',
+              700: '#7e22ce',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .transition-all-custom { transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+    .modal-backdrop {
+      backdrop-filter: blur(8px);
+      background-color: rgba(15, 23, 42, 0.45);
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    @media print {
+      body * { visibility: hidden; }
+      #printableInvoiceModal, #printableInvoiceModal * { visibility: visible; }
+      #printableInvoiceModal {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 24px;
+        background: white;
+      }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col selection:bg-blue-100 selection:text-blue-900">
+
+  <!-- =========================================================================
+       AUTHENTICATION SECTION (Landing, Sign Up, Forgot Password & Sign In Modal)
+       ========================================================================= -->
+  <div id="auth-wrapper" class="flex-1 flex flex-col justify-between">
+    
+    <!-- Top Navigation / Brand Bar for Authentication Views -->
+    <header class="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between z-20">
+      <div onclick="showLandingView()" class="flex items-center space-x-2.5 cursor-pointer select-none">
+        <div id="brand-logo-bg" class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 transition-all-custom">
+          <i id="brand-icon" data-lucide="shield-check" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <span class="text-xl font-bold tracking-tight text-slate-900 block leading-tight">Presub</span>
+          <span id="brand-subtext" class="text-xs text-slate-500 font-medium">Subscription Management System</span>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-3">
+        <button 
+          type="button" 
+          onclick="openSignInModal('customer')"
+          class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100/80 transition-colors"
+        >
+          <i data-lucide="log-in" class="w-4 h-4 text-slate-500"></i>
+          <span>Sign In</span>
+        </button>
+
+        <button 
+          type="button" 
+          onclick="openSignUpView()"
+          class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-500/20 transition-all"
+        >
+          <i data-lucide="user-plus" class="w-4 h-4"></i>
+          <span>Get Started</span>
+        </button>
+
+        <button 
+          type="button"
+          onclick="toggleHelpModal(true)"
+          class="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors flex items-center gap-1.5 ml-1"
+        >
+          <i data-lucide="help-circle" class="w-4 h-4"></i>
+          <span class="hidden md:inline">Support</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- VIEW 1: LANDING / WELCOME GATEWAY -->
+    <main id="view-landing" class="w-full max-w-5xl mx-auto px-4 py-8 sm:py-12 flex-1 flex flex-col justify-center items-center">
+      <div class="text-center max-w-2xl mx-auto mb-10">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-xs font-semibold uppercase tracking-wider mb-4">
+          <i data-lucide="repeat" class="w-3.5 h-3.5"></i>
+          Subscription Lifecycle Platform
+        </div>
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
+          Seamless Recurring Billing & Subscription Management
+        </h1>
+        <p class="mt-4 text-base sm:text-lg text-slate-600 leading-relaxed">
+          Access your self-service customer portal to review active subscriptions and invoices, or authenticate as Billing Ops Admin to orchestrate products, plans, and revenue metrics.
+        </p>
+
+        <!-- Quick Admin Testing Helper Badge & DB Status -->
+        <div class="mt-4 inline-flex flex-wrap items-center justify-center gap-2 p-2 px-3.5 rounded-xl bg-slate-100 text-xs text-slate-600 border border-slate-200">
+          <span class="font-bold text-slate-900">Testing Login:</span>
+          <span>Admin: <strong class="text-purple-700">ops.admin@presub.internal</strong> &bull; Pass: <strong class="text-purple-700">Admin@123</strong> &bull; 2FA: <strong class="text-purple-700">123456</strong></span>
+          <span class="text-slate-300">&bull;</span>
+          <button type="button" onclick="openModal('supabaseConfigModal')" class="text-indigo-600 hover:underline font-semibold inline-flex items-center gap-1">
+            <i data-lucide="database" class="w-3.5 h-3.5"></i>
+            <span id="db-connection-pill">Configure Supabase DB</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Gateway Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
+        <!-- Sign In Card -->
+        <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-8 flex flex-col justify-between hover:border-blue-200 transition-all-custom group">
+          <div>
+            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-5 group-hover:bg-blue-600 group-hover:text-white transition-all-custom">
+              <i data-lucide="credit-card" class="w-6 h-6"></i>
+            </div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-xl font-bold text-slate-900">Sign In to Presub</h3>
+              <span class="text-[11px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">Customer & Admin</span>
+            </div>
+            <p class="text-sm text-slate-500 mt-2.5 leading-relaxed">
+              Manage your active subscription plans, download invoices, update payment methods, or enter the billing ops center with 2FA token authentication.
+            </p>
+          </div>
+
+          <div class="mt-8 space-y-2.5">
+            <button 
+              type="button" 
+              onclick="openSignInModal('customer')"
+              class="w-full py-3 px-4 rounded-xl text-white font-medium text-sm shadow-md transition-all-custom flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 shadow-blue-500/25 active:scale-[0.99]"
+            >
+              <span>Customer Sign In</span>
+              <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </button>
+            
+            <button 
+              type="button" 
+              onclick="openSignInModal('admin')"
+              class="w-full py-2.5 px-4 rounded-xl text-purple-700 font-medium text-xs bg-purple-50 hover:bg-purple-100/80 border border-purple-200/60 transition-colors flex items-center justify-center gap-2"
+            >
+              <i data-lucide="shield" class="w-3.5 h-3.5"></i>
+              <span>Authenticate as Billing Ops Admin</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Customer Sign Up Card -->
+        <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-8 flex flex-col justify-between hover:border-emerald-200 transition-all-custom group">
+          <div>
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-5 group-hover:bg-emerald-600 group-hover:text-white transition-all-custom">
+              <i data-lucide="user-plus" class="w-6 h-6"></i>
+            </div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-xl font-bold text-slate-900">Create Customer Account</h3>
+              <span class="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">Self-Service</span>
+            </div>
+            <p class="text-sm text-slate-500 mt-2.5 leading-relaxed">
+              Register your Presub customer profile to subscribe to available software plans, review renewal cycles, and view your billing invoices anytime.
+            </p>
+          </div>
+
+          <div class="mt-8 space-y-2.5">
+            <button 
+              type="button" 
+              onclick="openSignUpView()"
+              class="w-full py-3 px-4 rounded-xl text-white font-medium text-sm shadow-md transition-all-custom flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 shadow-slate-900/20 active:scale-[0.99]"
+            >
+              <span>Set Up Customer Account</span>
+              <i data-lucide="arrow-right" class="w-4 h-4 text-emerald-400"></i>
+            </button>
+            <div class="text-center text-xs text-slate-400 pt-1">
+              Automated billing & renewal management
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- VIEW 2: CUSTOMER SIGN UP VIEW -->
+    <main id="view-signup" class="hidden w-full max-w-lg mx-auto px-4 py-8 flex-1 flex flex-col justify-center">
+      <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-8 sm:p-9 relative overflow-hidden">
+        <button 
+          type="button" 
+          onclick="showLandingView()"
+          class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors mb-5"
+        >
+          <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+          <span>Back to gateway</span>
+        </button>
+
+        <div class="mb-6">
+          <div class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[11px] font-semibold mb-2">
+            Customer Registration
+          </div>
+          <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
+            Create your Customer Account
+          </h1>
+          <p class="text-sm text-slate-500 mt-1">
+            Configure your customer profile to manage recurring services. Existing customer? 
+            <a href="#signin" onclick="openSignInModal('customer'); return false;" class="font-medium text-blue-600 hover:underline">Sign in to your portal</a>.
+          </p>
+        </div>
+
+        <div id="signup-status-banner" class="hidden mb-6 p-4 rounded-xl text-sm border flex items-start gap-3 transition-all-custom">
+          <i id="signup-status-icon" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+          <div class="flex-1 text-sm font-medium" id="signup-status-message"></div>
+        </div>
+
+        <form id="signup-form" onsubmit="handleSignUpSubmit(event)" class="space-y-4">
+          <div>
+            <label for="reg-name" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Full Name / Company Representative
+            </label>
+            <div class="relative rounded-xl">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="user" class="w-4 h-4"></i>
+              </div>
+              <input 
+                type="text" 
+                id="reg-name" 
+                required
+                placeholder="Alex Johnson"
+                class="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-slate-800 placeholder-slate-400 transition-all-custom"
+              >
+            </div>
+          </div>
+
+          <div>
+            <label for="reg-email" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Email Address
+            </label>
+            <div class="relative rounded-xl">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="mail" class="w-4 h-4"></i>
+              </div>
+              <input 
+                type="email" 
+                id="reg-email" 
+                required
+                placeholder="alex@company.com"
+                class="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-slate-800 placeholder-slate-400 transition-all-custom"
+              >
+            </div>
+          </div>
+
+          <div>
+            <label for="reg-company" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Company Name (Optional)
+            </label>
+            <div class="relative rounded-xl">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="building" class="w-4 h-4"></i>
+              </div>
+              <input 
+                type="text" 
+                id="reg-company" 
+                placeholder="Apex Technologies Ltd."
+                class="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-slate-800 placeholder-slate-400 transition-all-custom"
+              >
+            </div>
+          </div>
+
+          <div>
+            <label for="reg-password" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Password
+            </label>
+            <div class="relative rounded-xl">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="lock" class="w-4 h-4"></i>
+              </div>
+              <input 
+                type="password" 
+                id="reg-password" 
+                required
+                minlength="9"
+                placeholder=">8 chars, 1 upper, 1 lower, 1 special"
+                class="w-full pl-10 pr-11 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-slate-800 placeholder-slate-400 transition-all-custom"
+              >
+              <button 
+                type="button" 
+                onclick="togglePasswordVisibilityField('reg-password', 'reg-eye-icon-1')" 
+                class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
+              >
+                <i id="reg-eye-icon-1" data-lucide="eye" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label for="reg-confirm-password" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Confirm Password
+            </label>
+            <div class="relative rounded-xl">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="check-check" class="w-4 h-4"></i>
+              </div>
+              <input 
+                type="password" 
+                id="reg-confirm-password" 
+                required
+                placeholder="Re-enter password"
+                class="w-full pl-10 pr-11 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-slate-800 placeholder-slate-400 transition-all-custom"
+              >
+              <button 
+                type="button" 
+                onclick="togglePasswordVisibilityField('reg-confirm-password', 'reg-eye-icon-2')" 
+                class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
+              >
+                <i id="reg-eye-icon-2" data-lucide="eye" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-1">
+            <label class="flex items-start gap-2.5 cursor-pointer">
+              <input 
+                type="checkbox" 
+                id="reg-terms"
+                required
+                class="mt-1 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 focus:ring-offset-0"
+              >
+              <span class="text-xs text-slate-600">
+                I agree to the Terms of Service and acknowledge the Recurring Billing terms.
+              </span>
+            </label>
+          </div>
+
+          <div class="pt-2">
+            <button 
+              type="submit" 
+              id="reg-submit-btn" 
+              class="w-full py-3 px-4 rounded-xl text-white font-medium text-sm shadow-md transition-all-custom flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 shadow-blue-500/25 active:scale-[0.99]"
+            >
+              <span id="reg-submit-text">Register Customer Profile</span>
+              <i id="reg-btn-arrow" data-lucide="arrow-right" class="w-4 h-4"></i>
+              <div id="reg-btn-spinner" class="hidden animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+            </button>
+          </div>
+        </form>
+      </div>
+    </main>
+
+    <!-- VIEW 3: FORGOT / RESET PASSWORD VIEW -->
+    <main id="view-forgot" class="hidden w-full max-w-lg mx-auto px-4 py-8 flex-1 flex flex-col justify-center">
+      <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-8 sm:p-9 relative overflow-hidden">
+        <button 
+          type="button" 
+          onclick="openSignInModal(currentRole)"
+          class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors mb-5"
+        >
+          <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+          <span>Back to Sign In</span>
+        </button>
+
+        <div class="mb-6">
+          <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[11px] font-semibold mb-2">
+            <i data-lucide="key" class="w-3.5 h-3.5"></i>
+            <span>Account Recovery</span>
+          </div>
+          <h1 class="text-2xl font-bold text-slate-900 tracking-tight">
+            Reset your password
+          </h1>
+          <p class="text-sm text-slate-500 mt-1">
+            Enter your registered email address and we'll dispatch a simulated 6-digit OTP code to reset your access.
+          </p>
+        </div>
+
+        <div id="forgot-status-banner" class="hidden mb-6 p-4 rounded-xl text-sm border flex items-start gap-3 transition-all-custom">
+          <i id="forgot-status-icon" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+          <div class="flex-1 text-sm font-medium" id="forgot-status-message"></div>
+        </div>
+
+        <form id="forgot-form" onsubmit="handleForgotSubmit(event)" class="space-y-4">
+          <div>
+            <label for="forgot-email" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Registered Email Address
+            </label>
+            <div class="relative rounded-xl">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="mail" class="w-4 h-4"></i>
+              </div>
+              <input 
+                type="email" 
+                id="forgot-email" 
+                required
+                placeholder="alex@company.com"
+                class="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-slate-800 placeholder-slate-400 transition-all-custom"
+              >
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <button 
+              type="submit" 
+              id="forgot-submit-btn" 
+              class="w-full py-3 px-4 rounded-xl text-white font-medium text-sm shadow-md transition-all-custom flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 shadow-blue-500/25 active:scale-[0.99]"
+            >
+              <span id="forgot-submit-text">Send Verification Code</span>
+              <i id="forgot-btn-arrow" data-lucide="send" class="w-4 h-4"></i>
+              <div id="forgot-btn-spinner" class="hidden animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+            </button>
+          </div>
+        </form>
+
+        <form id="otp-form" onsubmit="handleOtpSubmit(event)" class="hidden space-y-4 mt-4 pt-4 border-t border-slate-100">
+          <div>
+            <label for="otp-code" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+              Enter 6-Digit OTP Code
+            </label>
+            <div class="relative rounded-xl">
+              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="shield-check" class="w-4 h-4"></i>
+              </div>
+              <input 
+                type="text" 
+                id="otp-code" 
+                maxlength="6"
+                required
+                placeholder="123456"
+                class="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-slate-800 placeholder-slate-400 tracking-widest font-mono transition-all-custom"
+              >
+            </div>
+          </div>
+          <button 
+            type="submit" 
+            id="otp-submit-btn"
+            class="w-full py-2.5 px-4 rounded-xl text-white font-medium text-sm bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all-custom flex items-center justify-center gap-2"
+          >
+            <span>Verify Code & Continue</span>
+            <i data-lucide="check" class="w-4 h-4"></i>
+          </button>
+        </form>
+      </div>
+    </main>
+
+    <!-- Global Footer for Landing Experience -->
+    <footer class="w-full max-w-7xl mx-auto px-6 py-6 text-center text-xs text-slate-400">
+      <p>&copy; 2026 Presub Inc. &bull; SubAdmin Subscription Management System &bull; <a href="#privacy" class="hover:underline">Privacy</a> &bull; <a href="#terms" class="hover:underline">Terms</a></p>
+    </footer>
+
+  </div>
+
+  <!-- =========================================================================
+       SIGN IN MODAL (Strictly 2 Roles: Customer vs Billing Ops Admin with 2FA)
+       ========================================================================= -->
+  <div 
+    id="signin-modal" 
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop opacity-0 pointer-events-none transition-all duration-300"
+    role="dialog"
+    aria-modal="true"
+  >
+    <div class="bg-white rounded-2xl shadow-2xl shadow-slate-900/30 border border-slate-100 p-7 sm:p-9 max-w-md w-full relative overflow-hidden transform scale-95 transition-all duration-300" id="signin-modal-card">
+      
+      <button 
+        type="button" 
+        onclick="closeSignInModal()"
+        class="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+      >
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <!-- Segmented Control: Customer vs Billing Ops Admin -->
+      <div class="mb-5 pr-8">
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+          Subscription Access Role
+        </label>
+        <div class="grid grid-cols-2 p-1.5 bg-slate-100/90 rounded-xl gap-1">
+          <button 
+            type="button" 
+            id="tab-customer"
+            onclick="setAuthRole('customer')"
+            class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition-all-custom bg-white text-blue-600 shadow-sm"
+          >
+            <i data-lucide="user" class="w-4 h-4"></i>
+            <span>Customer</span>
+          </button>
+          
+          <button 
+            type="button" 
+            id="tab-admin"
+            onclick="setAuthRole('admin')"
+            class="flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all-custom text-slate-600 hover:text-slate-900"
+          >
+            <i data-lucide="shield" class="w-4 h-4"></i>
+            <span>Ops Admin</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="mb-5">
+        <h2 id="form-heading" class="text-2xl font-bold text-slate-900 tracking-tight">
+          Customer Login
+        </h2>
+        <p id="form-subheading" class="text-sm text-slate-500 mt-1">
+          Sign in to access your active subscription plans, renewals, and invoice history.
+        </p>
+      </div>
+
+      <div id="status-banner" class="hidden mb-4 p-3.5 rounded-xl text-sm border flex items-start gap-2.5 transition-all-custom">
+        <i id="status-icon" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+        <div class="flex-1 text-sm font-medium" id="status-message"></div>
+      </div>
+
+      <form id="login-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
+        <div>
+          <label for="identifier" id="label-identifier" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+            Customer Email
+          </label>
+          <div class="relative rounded-xl">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <i id="icon-identifier" data-lucide="mail" class="w-4 h-4"></i>
+            </div>
+            <input 
+              type="text" 
+              id="identifier" 
+              required
+              placeholder="alex@company.com"
+              class="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-slate-800 placeholder-slate-400 transition-all-custom"
+            >
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-slate-600">
+              Password
+            </label>
+            <a href="#forgot" id="forgot-link" onclick="openForgotView(); return false;" class="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
+              Forgot?
+            </a>
+          </div>
+          <div class="relative rounded-xl">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <i data-lucide="lock" class="w-4 h-4"></i>
+            </div>
+            <input 
+              type="password" 
+              id="password" 
+              required
+              placeholder="••••••••"
+              class="w-full pl-10 pr-11 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-slate-800 placeholder-slate-400 transition-all-custom"
+            >
+            <button 
+              type="button" 
+              onclick="togglePasswordVisibilityField('password', 'eye-icon')" 
+              class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
+            >
+              <i id="eye-icon" data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2FA Security Key (Mandatory for Admin) -->
+        <div id="admin-2fa-container" class="hidden">
+          <label for="security-key" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5 flex items-center justify-between">
+            <span>2FA Security Token</span>
+            <span class="text-[10px] text-purple-600 font-bold bg-purple-50 px-1.5 py-0.5 rounded">Required for Admin</span>
+          </label>
+          <div class="relative rounded-xl">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <i data-lucide="key-round" class="w-4 h-4"></i>
+            </div>
+            <input 
+              type="text" 
+              id="security-key" 
+              maxlength="6"
+              placeholder="123456"
+              class="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 text-slate-800 placeholder-slate-400 tracking-widest font-mono transition-all-custom"
+            >
+          </div>
+        </div>
+
+        <div class="pt-2">
+          <button 
+            type="submit" 
+            id="submit-btn" 
+            class="w-full py-3 px-4 rounded-xl text-white font-medium text-sm shadow-md transition-all-custom flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 shadow-blue-500/25 active:scale-[0.99]"
+          >
+            <span id="submit-text">Access Customer Portal</span>
+            <i id="btn-arrow" data-lucide="arrow-right" class="w-4 h-4"></i>
+            <div id="btn-spinner" class="hidden animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+          </button>
+        </div>
+      </form>
+
+      <div id="footer-prompt" class="text-center mt-5 pt-4 border-t border-slate-100 text-xs text-slate-500">
+        New to Presub? 
+        <a href="#signup" onclick="closeSignInModal(); openSignUpView(); return false;" class="font-semibold text-blue-600 hover:underline">Register customer account</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       AUTHENTICATED DASHBOARD APPLICATION (Admin & Customer Portal)
+       ========================================================================= -->
+  <div id="app-workspace" class="hidden h-screen w-full flex overflow-hidden bg-[#f8fafc]">
+    
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="mobileBackdrop" onclick="toggleSidebar()" class="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm hidden md:hidden"></div>
+
+    <!-- Left Sidebar (Admin only) -->
+    <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-50 flex flex-col justify-between w-64 bg-[#0b1120] text-slate-300 transition-transform duration-300 transform -translate-x-full md:translate-x-0 border-r border-slate-800 shrink-0 select-none">
+      <div class="flex flex-col h-full">
+        <!-- Brand Header -->
+        <div class="h-20 flex items-center justify-between px-6 border-b border-slate-800/60">
+          <div class="flex items-center space-x-3 cursor-pointer" onclick="navigate('dashboard')">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#4338ca] via-[#4f46e5] to-[#6366f1] flex items-center justify-center text-white shadow-md shadow-indigo-600/30">
+              <i data-lucide="repeat" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <span class="text-xl font-bold tracking-tight text-white block leading-tight">SubAdmin</span>
+              <span class="text-[10px] text-purple-400 font-semibold tracking-wider uppercase">Billing Ops Admin</span>
+            </div>
+          </div>
+          <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-white">
+            <i data-lucide="x" class="w-6 h-6"></i>
+          </button>
+        </div>
+
+        <!-- Sidebar Navigation Menu for Admin -->
+        <nav class="flex-1 px-4 py-5 space-y-1 overflow-y-auto">
+          <button onclick="navigate('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3.5 px-4 py-3 text-sm font-medium rounded-xl bg-[#4f46e5] text-white shadow-md shadow-indigo-600/30">
+            <i data-lucide="layout-grid" class="w-5 h-5 shrink-0"></i>
+            <span>Dashboard</span>
+          </button>
+          <button onclick="navigate('customers')" id="nav-customers" class="w-full flex items-center gap-3.5 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+            <i data-lucide="users" class="w-5 h-5 shrink-0"></i>
+            <span>Customers</span>
+          </button>
+          <button onclick="navigate('products')" id="nav-products" class="w-full flex items-center gap-3.5 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+            <i data-lucide="box" class="w-5 h-5 shrink-0"></i>
+            <span>Products & Variants</span>
+          </button>
+          <button onclick="navigate('plans')" id="nav-plans" class="w-full flex items-center gap-3.5 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+            <i data-lucide="credit-card" class="w-5 h-5 shrink-0"></i>
+            <span>Subscription Plans</span>
+          </button>
+          <button onclick="navigate('quotations')" id="nav-quotations" class="w-full flex items-center gap-3.5 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+            <i data-lucide="file-text" class="w-5 h-5 shrink-0"></i>
+            <span>Quotations & Templates</span>
+          </button>
+          <button onclick="navigate('subscriptions')" id="nav-subscriptions" class="w-full flex items-center gap-3.5 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+            <i data-lucide="repeat" class="w-5 h-5 shrink-0"></i>
+            <span>Subscriptions</span>
+          </button>
+          <button onclick="navigate('invoices')" id="nav-invoices" class="w-full flex items-center gap-3.5 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+            <i data-lucide="receipt" class="w-5 h-5 shrink-0"></i>
+            <span>Invoices</span>
+          </button>
+          <button onclick="navigate('payments')" id="nav-payments" class="w-full flex items-center gap-3.5 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+            <i data-lucide="wallet" class="w-5 h-5 shrink-0"></i>
+            <span>Payments</span>
+          </button>
+          <button onclick="navigate('discounts')" id="nav-discounts" class="w-full flex items-center gap-3.5 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+            <i data-lucide="percent" class="w-5 h-5 shrink-0"></i>
+            <span>Discounts & Taxes</span>
+          </button>
+          <button onclick="navigate('reports')" id="nav-reports" class="w-full flex items-center gap-3.5 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60">
+            <i data-lucide="bar-chart-2" class="w-5 h-5 shrink-0"></i>
+            <span>Reports & Analytics</span>
+          </button>
+        </nav>
+
+        <!-- Sidebar Footer -->
+        <div class="p-5 border-t border-slate-800/60 bg-[#070b14]/50">
+          <p class="text-xs text-slate-400">Subscription Management System</p>
+          <p class="text-xs text-slate-500 font-mono mt-0.5">Admin Dashboard v1.0</p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- App Body Area -->
+    <div class="flex-1 flex flex-col h-screen overflow-hidden">
+      
+      <!-- Top Workspace Header -->
+      <header class="h-20 bg-white border-b border-slate-200/80 px-6 sm:px-8 flex items-center justify-between shrink-0 z-10">
+        <div class="flex items-center gap-4">
+          <button id="sidebarToggleBtn" onclick="toggleSidebar()" class="md:hidden p-2 -ml-2 rounded-lg text-slate-600 hover:bg-slate-100">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+          </button>
+          <div>
+            <h1 id="page-title" class="text-2xl font-bold tracking-tight text-slate-900 leading-tight">Dashboard</h1>
+            <p id="page-subtitle" class="text-xs sm:text-sm text-slate-500 mt-0.5">Overview of subscription metrics and billing</p>
+          </div>
+        </div>
+
+        <!-- Header Right: User Identity & Direct Sign Out -->
+        <div class="flex items-center space-x-3 sm:space-x-4">
+          <div class="hidden sm:flex flex-col text-right">
+            <span id="user-display-name" class="text-xs sm:text-sm font-semibold text-slate-800">Ops Administrator</span>
+            <span id="user-display-role" class="text-[11px] font-mono text-purple-600 font-semibold">ADMIN ACCESS</span>
+          </div>
+
+          <div id="user-avatar-badge" class="w-9 h-9 rounded-full bg-purple-100 text-purple-700 border border-purple-200 flex items-center justify-center font-bold text-xs tracking-wider shadow-sm select-none">
+            AD
+          </div>
+
+          <!-- Supabase DB Connection Button -->
+          <button 
+            type="button" 
+            onclick="openModal('supabaseConfigModal')"
+            title="Configure Supabase Database"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 border border-indigo-200/60 transition"
+          >
+            <i data-lucide="database" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline" id="header-db-status">Supabase DB</span>
+          </button>
+
+          <!-- Sign Out Button -->
+          <button 
+            type="button" 
+            onclick="handleSignOut()"
+            title="Sign Out of Session"
+            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200/60 transition"
+          >
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">Sign Out</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Scrollable Main View Container -->
+      <main class="flex-1 overflow-y-auto px-6 sm:px-8 py-7">
+        
+        <!-- ==================== ADMIN VIEW: DASHBOARD ==================== -->
+        <div id="view-dashboard" class="space-y-6 max-w-7xl mx-auto">
+          <!-- Simulate Billing Banner -->
+          <div class="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-[#4f46e5] flex items-center justify-center shrink-0">
+                <i data-lucide="zap" class="w-6 h-6"></i>
+              </div>
+              <div>
+                <h2 class="text-base font-semibold text-slate-900">Simulate Billing Day</h2>
+                <p class="text-sm text-slate-500 mt-0.5">Generate invoices for all active subscriptions at once</p>
+              </div>
+            </div>
+            <button onclick="simulateBillingDay()" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#4338ca] hover:bg-[#3730a3] text-white text-sm font-medium transition shadow-sm active:scale-95">
+              <i data-lucide="zap" class="w-4 h-4"></i>
+              <span>Simulate Billing Day</span>
+            </button>
+          </div>
+
+          <!-- 4 Stat Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <p class="text-xs font-medium text-slate-500">Active Subscriptions</p>
+                <h3 id="dash-active-subs" class="text-2xl font-bold text-slate-900 mt-2">0</h3>
+              </div>
+              <div class="w-11 h-11 rounded-xl bg-indigo-50/80 border border-indigo-100 text-indigo-600 flex items-center justify-center">
+                <i data-lucide="repeat" class="w-5 h-5"></i>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <p class="text-xs font-medium text-slate-500">Total Revenue (Paid)</p>
+                <h3 id="dash-total-revenue" class="text-2xl font-bold text-slate-900 mt-2">$0.00</h3>
+              </div>
+              <div class="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xl">
+                $
+              </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <p class="text-xs font-medium text-slate-500">Outstanding</p>
+                <h3 id="dash-outstanding" class="text-2xl font-bold text-slate-900 mt-2">$0.00</h3>
+              </div>
+              <div class="w-11 h-11 rounded-xl bg-amber-50 border border-amber-100 text-amber-500 flex items-center justify-center">
+                <i data-lucide="trending-up" class="w-5 h-5"></i>
+              </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <p class="text-xs font-medium text-slate-500">Overdue Invoices</p>
+                <h3 id="dash-overdue-count" class="text-2xl font-bold text-slate-900 mt-2">0</h3>
+              </div>
+              <div class="w-11 h-11 rounded-xl bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center">
+                <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Secondary 3 Metrics -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex items-center gap-4">
+              <div class="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 flex items-center justify-center">
+                <i data-lucide="users" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <p class="text-xs font-medium text-slate-500">Total Customers</p>
+                <h4 id="dash-total-customers" class="text-xl font-bold text-slate-900 mt-1">0</h4>
+              </div>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex items-center gap-4">
+              <div class="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 flex items-center justify-center">
+                <i data-lucide="file-text" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <p class="text-xs font-medium text-slate-500">Total Invoices</p>
+                <h4 id="dash-total-invoices" class="text-xl font-bold text-slate-900 mt-1">0</h4>
+              </div>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex items-center gap-4">
+              <div class="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 flex items-center justify-center">
+                <i data-lucide="check-circle" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <p class="text-xs font-medium text-slate-500">Paid Invoices</p>
+                <h4 id="dash-paid-invoices" class="text-xl font-bold text-slate-900 mt-1">0</h4>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Invoices & Subscriptions Split -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs flex flex-col justify-between min-h-[220px]">
+              <div class="flex items-center justify-between">
+                <h3 class="text-base font-semibold text-slate-900">Recent Invoices</h3>
+                <button onclick="navigate('invoices')" class="text-xs font-medium text-slate-500 hover:text-indigo-600">View all</button>
+              </div>
+              <div id="dash-recent-invoices" class="my-auto py-8 text-center text-sm text-slate-400">
+                No invoices yet.
+              </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs flex flex-col justify-between min-h-[220px]">
+              <div class="flex items-center justify-between">
+                <h3 class="text-base font-semibold text-slate-900">Recent Subscriptions</h3>
+                <button onclick="navigate('subscriptions')" class="text-xs font-medium text-slate-500 hover:text-indigo-600">View all</button>
+              </div>
+              <div id="dash-recent-subscriptions" class="my-auto py-8 text-center text-sm text-slate-400">
+                No subscriptions yet.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== ADMIN VIEW: CUSTOMERS ==================== -->
+        <div id="view-customers" class="space-y-6 max-w-7xl mx-auto hidden">
+          <div class="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs">
+            <div class="mb-5 flex justify-between items-center">
+              <div>
+                <h2 class="text-base font-semibold text-slate-900">All Customers</h2>
+                <p id="customers-count-subtitle" class="text-xs text-slate-500 mt-0.5">0 total customers</p>
+              </div>
+              <button onclick="openModal('customerModal')" class="inline-flex items-center gap-2 px-4 py-2 bg-[#4338ca] text-white text-xs sm:text-sm font-semibold rounded-xl hover:bg-[#3730a3]">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Add Customer</span>
+              </button>
+            </div>
+
+            <div class="relative w-full max-w-md mb-4">
+              <input type="text" id="cust-search" oninput="renderCustomersTable()" placeholder="Search customers..." class="w-full pl-9 pr-4 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="search" class="w-4 h-4"></i>
+              </span>
+            </div>
+
+            <div class="border-t border-slate-100 overflow-x-auto">
+              <table class="w-full text-left text-xs whitespace-nowrap">
+                <thead>
+                  <tr class="text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
+                    <th class="py-3 px-4">CUSTOMER</th>
+                    <th class="py-3 px-4">COMPANY</th>
+                    <th class="py-3 px-4">PHONE</th>
+                    <th class="py-3 px-4">STATUS</th>
+                    <th class="py-3 px-4">CREATED</th>
+                    <th class="py-3 px-4 text-right">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody id="customers-table-body" class="divide-y divide-slate-100 text-slate-600 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== ADMIN VIEW: PRODUCTS & VARIANTS ==================== -->
+        <div id="view-products" class="space-y-6 max-w-7xl mx-auto hidden">
+          <div class="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs">
+            <div class="mb-5 flex justify-between items-center">
+              <div>
+                <h2 class="text-base font-semibold text-slate-900">Product Catalog</h2>
+                <p id="products-count-subtitle" class="text-xs text-slate-500 mt-0.5">Manage products and variant surcharges</p>
+              </div>
+              <button onclick="openModal('productModal')" class="inline-flex items-center gap-2 px-4 py-2 bg-[#4338ca] text-white text-xs sm:text-sm font-semibold rounded-xl hover:bg-[#3730a3]">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Add Product</span>
+              </button>
+            </div>
+
+            <div class="border-t border-slate-100 overflow-x-auto">
+              <table class="w-full text-left text-xs whitespace-nowrap">
+                <thead>
+                  <tr class="text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
+                    <th class="py-3 px-4">PRODUCT</th>
+                    <th class="py-3 px-4">CATEGORY</th>
+                    <th class="py-3 px-4">PLANS</th>
+                    <th class="py-3 px-4">SALES PRICE</th>
+                    <th class="py-3 px-4">CREATED</th>
+                    <th class="py-3 px-4 text-right">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody id="products-table-body" class="divide-y divide-slate-100 text-slate-600 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== ADMIN VIEW: SUBSCRIPTION PLANS ==================== -->
+        <div id="view-plans" class="space-y-6 max-w-7xl mx-auto hidden">
+          <div class="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs">
+            <div class="mb-5 flex justify-between items-center">
+              <div>
+                <h2 class="text-base font-semibold text-slate-900">Billing Plans</h2>
+                <p id="plans-count-subtitle" class="text-xs text-slate-500 mt-0.5">Manage recurring cycles & pricing</p>
+              </div>
+              <button onclick="openModal('planModal')" class="inline-flex items-center gap-2 px-4 py-2 bg-[#4338ca] text-white text-xs sm:text-sm font-semibold rounded-xl hover:bg-[#3730a3]">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Add Plan</span>
+              </button>
+            </div>
+
+            <div class="border-t border-slate-100 overflow-x-auto">
+              <table class="w-full text-left text-xs whitespace-nowrap">
+                <thead>
+                  <tr class="text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
+                    <th class="py-3 px-4">PLAN</th>
+                    <th class="py-3 px-4">PRODUCT</th>
+                    <th class="py-3 px-4">INTERVAL</th>
+                    <th class="py-3 px-4">PRICE</th>
+                    <th class="py-3 px-4">TAX RATE</th>
+                    <th class="py-3 px-4 text-right">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody id="plans-table-body" class="divide-y divide-slate-100 text-slate-600 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== ADMIN VIEW: QUOTATIONS ==================== -->
+        <div id="view-quotations" class="space-y-6 max-w-7xl mx-auto hidden">
+          <div class="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs">
+            <div class="mb-5 flex justify-between items-center">
+              <div>
+                <h2 class="text-base font-semibold text-slate-900">Quotation Proposals & Templates</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Convert customer offers into active recurring contracts</p>
+              </div>
+              <button onclick="createFastQuote()" class="inline-flex items-center gap-2 px-4 py-2 bg-[#4338ca] text-white text-xs sm:text-sm font-semibold rounded-xl hover:bg-[#3730a3]">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Create Quotation Offer</span>
+              </button>
+            </div>
+
+            <div class="border-t border-slate-100 overflow-x-auto">
+              <table class="w-full text-left text-xs whitespace-nowrap">
+                <thead>
+                  <tr class="text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
+                    <th class="py-3 px-4">QUOTE REF</th>
+                    <th class="py-3 px-4">CUSTOMER</th>
+                    <th class="py-3 px-4">PLAN / PRODUCT</th>
+                    <th class="py-3 px-4">DISCOUNT</th>
+                    <th class="py-3 px-4">TOTAL</th>
+                    <th class="py-3 px-4">VALIDITY</th>
+                    <th class="py-3 px-4 text-right">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody id="quotations-table-body" class="divide-y divide-slate-100 text-slate-600 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== ADMIN VIEW: SUBSCRIPTIONS ==================== -->
+        <div id="view-subscriptions" class="space-y-6 max-w-7xl mx-auto hidden">
+          <div class="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs">
+            <div class="mb-5 flex justify-between items-center">
+              <div>
+                <h2 class="text-base font-semibold text-slate-900">All Subscriptions</h2>
+                <p id="subs-count-subtitle" class="text-xs text-slate-500 mt-0.5">0 subscriptions</p>
+              </div>
+              <button onclick="openModal('subscriptionModal')" class="inline-flex items-center gap-2 px-4 py-2 bg-[#4338ca] text-white text-xs sm:text-sm font-semibold rounded-xl hover:bg-[#3730a3]">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Add Subscription</span>
+              </button>
+            </div>
+
+            <div class="border-t border-slate-100 overflow-x-auto">
+              <table class="w-full text-left text-xs whitespace-nowrap">
+                <thead>
+                  <tr class="text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
+                    <th class="py-3 px-4">CUSTOMER</th>
+                    <th class="py-3 px-4">PLAN</th>
+                    <th class="py-3 px-4">AMOUNT</th>
+                    <th class="py-3 px-4">STATUS</th>
+                    <th class="py-3 px-4">PERIOD</th>
+                    <th class="py-3 px-4 text-right">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody id="subscriptions-table-body" class="divide-y divide-slate-100 text-slate-600 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- State Machine Indicator Card -->
+          <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs">
+            <h3 class="text-xs font-semibold text-slate-800 tracking-wide mb-3">Subscription State Machine</h3>
+            <div class="flex items-center flex-wrap gap-2 text-xs font-medium">
+              <span class="px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200/60 font-semibold">Draft</span>
+              <span class="text-slate-400">&rarr;</span>
+              <span class="px-3 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200/70 font-semibold">Quotation</span>
+              <span class="text-slate-400">&rarr;</span>
+              <span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">Confirmed</span>
+              <span class="text-slate-400">&rarr;</span>
+              <span class="px-3 py-1 rounded-full bg-green-100 text-green-800 border border-green-200 font-semibold">Active</span>
+              <span class="text-slate-400">&rarr;</span>
+              <span class="px-3 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-semibold">Cancelled</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== ADMIN VIEW: INVOICES ==================== -->
+        <div id="view-invoices" class="space-y-6 max-w-7xl mx-auto hidden">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs">
+              <p class="text-xs font-medium text-slate-500">Total Paid</p>
+              <h3 id="inv-stat-paid" class="text-2xl font-bold text-emerald-600 mt-2">$0.00</h3>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs">
+              <p class="text-xs font-medium text-slate-500">Outstanding</p>
+              <h3 id="inv-stat-outstanding" class="text-2xl font-bold text-amber-600 mt-2">$0.00</h3>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs">
+              <p class="text-xs font-medium text-slate-500">Overdue</p>
+              <h3 id="inv-stat-overdue" class="text-2xl font-bold text-rose-600 mt-2">$0.00</h3>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs">
+            <div class="mb-5 flex justify-between items-center">
+              <div>
+                <h2 class="text-base font-semibold text-slate-900">All Invoices</h2>
+                <p id="invoices-count-subtitle" class="text-xs text-slate-500 mt-0.5">0 invoices</p>
+              </div>
+              <button onclick="markAllDueOverdue()" class="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs sm:text-sm font-semibold rounded-xl">
+                Mark Overdue
+              </button>
+            </div>
+
+            <div class="border-t border-slate-100 overflow-x-auto">
+              <table class="w-full text-left text-xs whitespace-nowrap">
+                <thead>
+                  <tr class="text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
+                    <th class="py-3 px-4">INVOICE #</th>
+                    <th class="py-3 px-4">CUSTOMER</th>
+                    <th class="py-3 px-4">ISSUED</th>
+                    <th class="py-3 px-4">DUE</th>
+                    <th class="py-3 px-4">TOTAL</th>
+                    <th class="py-3 px-4">STATUS</th>
+                    <th class="py-3 px-4 text-right">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody id="invoices-table-body" class="divide-y border-t border-slate-100 text-slate-600 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== ADMIN VIEW: PAYMENTS ==================== -->
+        <div id="view-payments" class="space-y-6 max-w-7xl mx-auto hidden">
+          <div class="max-w-md bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+              <i data-lucide="check-circle" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-slate-500">Total Payments Collected</p>
+              <h3 id="payments-stat-total" class="text-2xl font-bold text-slate-900 mt-1">$0.00</h3>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs">
+            <div class="mb-5 flex justify-between items-center">
+              <div>
+                <h2 class="text-base font-semibold text-slate-900">Payment Records</h2>
+                <p id="payments-count-subtitle" class="text-xs text-slate-500 mt-0.5">0 payments recorded</p>
+              </div>
+              <button onclick="openModal('paymentModal')" class="inline-flex items-center gap-2 px-4 py-2 bg-[#4338ca] text-white text-xs sm:text-sm font-semibold rounded-xl hover:bg-[#3730a3]">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Record Payment</span>
+              </button>
+            </div>
+
+            <div class="border-t border-slate-100 overflow-x-auto">
+              <table class="w-full text-left text-xs whitespace-nowrap">
+                <thead>
+                  <tr class="text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
+                    <th class="py-3 px-4">INVOICE</th>
+                    <th class="py-3 px-4">CUSTOMER</th>
+                    <th class="py-3 px-4">AMOUNT</th>
+                    <th class="py-3 px-4">METHOD</th>
+                    <th class="py-3 px-4">REFERENCE</th>
+                    <th class="py-3 px-4">PAYMENT DATE</th>
+                    <th class="py-3 px-4">STATUS</th>
+                  </tr>
+                </thead>
+                <tbody id="payments-table-body" class="divide-y divide-slate-100 text-slate-600 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== ADMIN VIEW: DISCOUNTS & TAXES ==================== -->
+        <div id="view-discounts" class="space-y-6 max-w-7xl mx-auto hidden">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-slate-900">Discount Rules</h3>
+                <span class="text-xs text-slate-400">Automated volume rules</span>
+              </div>
+              <div id="discounts-list-wrap" class="space-y-3"></div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs">
+              <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-slate-900">Tax Jurisdictions</h3>
+                <span class="text-xs text-slate-400">Automated checkout rules</span>
+              </div>
+              <div id="tax-rules-list-wrap" class="space-y-3"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== ADMIN VIEW: REPORTS & ANALYTICS ==================== -->
+        <div id="view-reports" class="space-y-6 max-w-7xl mx-auto hidden">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <p class="text-xs font-medium text-slate-500">Total Revenue</p>
+                <h3 id="rep-total-revenue" class="text-2xl font-bold text-slate-900 mt-2">$0.00</h3>
+              </div>
+              <div class="w-11 h-11 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-xl">$</div>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <p class="text-xs font-medium text-slate-500">Outstanding</p>
+                <h3 id="rep-outstanding" class="text-2xl font-bold text-slate-900 mt-2">$0.00</h3>
+              </div>
+              <div class="w-11 h-11 rounded-xl bg-amber-50 border border-amber-100 text-amber-500 flex items-center justify-center">
+                <i data-lucide="trending-up" class="w-5 h-5"></i>
+              </div>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <p class="text-xs font-medium text-slate-500">Overdue</p>
+                <h3 id="rep-overdue" class="text-2xl font-bold text-slate-900 mt-2">$0.00</h3>
+              </div>
+              <div class="w-11 h-11 rounded-xl bg-rose-50 border border-rose-100 text-rose-500 flex items-center justify-center">
+                <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+              </div>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <p class="text-xs font-medium text-slate-500">Active Subs</p>
+                <h3 id="rep-active-subs" class="text-2xl font-bold text-slate-900 mt-2">0</h3>
+              </div>
+              <div class="w-11 h-11 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center">
+                <i data-lucide="repeat" class="w-5 h-5"></i>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs">
+              <h3 class="text-sm font-semibold text-slate-800">Active Subscriptions by Interval</h3>
+              <div class="mt-4 h-64 flex items-center justify-center">
+                <canvas id="chart-interval"></canvas>
+              </div>
+            </div>
+            <div class="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs">
+              <h3 class="text-sm font-semibold text-slate-800">Top Plans by Revenue</h3>
+              <div class="mt-4 h-64 flex items-center justify-center">
+                <canvas id="chart-plans"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== CUSTOMER PORTAL VIEW ==================== -->
+        <div id="view-customer-portal" class="space-y-6 max-w-6xl mx-auto hidden">
+          <!-- Customer Welcome Hero -->
+          <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <span class="inline-block px-3 py-1 rounded-full bg-blue-500/30 border border-blue-400/30 text-xs font-semibold uppercase tracking-wider mb-2 text-blue-200">Customer Self-Service Hub</span>
+              <h2 id="portal-user-headline" class="text-2xl font-bold">Welcome back, Alex Johnson</h2>
+              <p class="text-sm text-indigo-200 mt-1">Manage your active software seats, subscribe to new plans, cancel subscriptions, and print tax invoices.</p>
+            </div>
+            <div class="text-right">
+              <span class="text-xs text-indigo-300 block">Account Status</span>
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold rounded-full mt-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                Active Subscriber
+              </span>
+            </div>
+          </div>
+
+          <!-- Customer Key Metrics -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+              <span class="text-xs font-medium text-slate-500">Active Subscriptions</span>
+              <h4 id="portal-metric-active-subs" class="text-2xl font-bold text-slate-900 mt-1">1</h4>
+              <p class="text-xs text-emerald-600 font-semibold mt-1">All accounts up-to-date</p>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+              <span class="text-xs font-medium text-slate-500">Next Renewal Date</span>
+              <h4 id="portal-metric-next-date" class="text-2xl font-bold text-slate-900 mt-1">Nov 15, 2026</h4>
+              <p class="text-xs text-slate-400 mt-1">Automated credit card billing</p>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+              <span class="text-xs font-medium text-slate-500">Total Outstanding</span>
+              <h4 id="portal-metric-outstanding" class="text-2xl font-bold text-slate-900 mt-1">$0.00</h4>
+              <p class="text-xs text-slate-400 mt-1">No overdue invoices</p>
+            </div>
+          </div>
+
+          <!-- Active Subscriptions & Available Plans Section -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Customer's Active Subscriptions -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-slate-900">My Subscriptions</h3>
+                <button onclick="openCustomerSubscribeModal()" class="px-3 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-semibold hover:bg-blue-700 shadow-sm flex items-center gap-1.5">
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                  <span>Add Subscription</span>
+                </button>
+              </div>
+              <div id="customer-subscriptions-list" class="space-y-3"></div>
+            </div>
+
+            <!-- Available Plans Catalog -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-slate-900">Available Software Plans</h3>
+                <span class="text-xs text-slate-400">Instant add-on</span>
+              </div>
+              <div id="customer-available-plans" class="space-y-3"></div>
+            </div>
+          </div>
+
+          <!-- Customer's Invoices & Payment History -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Customer Invoices -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-slate-900">My Invoices</h3>
+                <span class="text-xs text-slate-400">PDF & Print Ready</span>
+              </div>
+              <div id="customer-invoices-list" class="space-y-3"></div>
+            </div>
+
+            <!-- Customer Payment History -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-slate-900">Payment History</h3>
+                <span class="text-xs text-slate-400">Recorded receipts</span>
+              </div>
+              <div id="customer-payments-list" class="space-y-3"></div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MODALS: CRUD ENTITIES & INVOICE PRINT
+       ========================================================================= -->
+
+  <!-- Customer Modal -->
+  <div id="customerModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+    <div class="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+        <h3 id="customerModalTitle" class="text-lg font-bold text-slate-900">Add New Customer</h3>
+        <button onclick="closeModal('customerModal')" class="text-slate-400 hover:text-slate-600">✕</button>
+      </div>
+      <form onsubmit="handleCustomerSubmit(event)" class="mt-4 space-y-4">
+        <input type="hidden" id="cust-form-id">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Customer / Contact Name *</label>
+          <input type="text" id="cust-form-name" required placeholder="John Doe" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Email Address *</label>
+          <input type="email" id="cust-form-email" required placeholder="billing@company.com" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Company</label>
+          <input type="text" id="cust-form-company" placeholder="Acme Global Inc." class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Phone</label>
+          <input type="tel" id="cust-form-phone" placeholder="+1 (555) 234-5678" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Initial Portal Password *</label>
+          <input type="text" id="cust-form-password" required value="Pass@1234" placeholder="Pass@1234" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
+        </div>
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeModal('customerModal')" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-sm bg-[#4338ca] hover:bg-[#3730a3] text-white font-medium rounded-xl shadow-sm">Save Customer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Product Modal (with Variant Delta) -->
+  <div id="productModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+    <div class="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+        <h3 class="text-lg font-bold text-slate-900">Add Product & Variant Surcharge</h3>
+        <button onclick="closeModal('productModal')" class="text-slate-400 hover:text-slate-600">✕</button>
+      </div>
+      <form onsubmit="handleProductSubmit(event)" class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Product Name *</label>
+          <input type="text" id="prod-form-name" required placeholder="e.g. BrightERP Software" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Category</label>
+            <input type="text" id="prod-form-category" placeholder="Enterprise" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Sales Price ($)</label>
+            <input type="number" step="0.01" min="0" id="prod-form-price" required placeholder="120.00" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Variant Surcharge (e.g. Odoo Edition +$60)</label>
+          <input type="text" id="prod-form-variant" placeholder="Odoo Edition (+$60)" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeModal('productModal')" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-sm bg-[#4338ca] hover:bg-[#3730a3] text-white font-medium rounded-xl shadow-sm">Save Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Plan Modal -->
+  <div id="planModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+    <div class="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+        <h3 class="text-lg font-bold text-slate-900">Add Billing Plan</h3>
+        <button onclick="closeModal('planModal')" class="text-slate-400 hover:text-slate-600">✕</button>
+      </div>
+      <form onsubmit="handlePlanSubmit(event)" class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Associated Product *</label>
+          <select id="plan-form-product" required class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Plan Title *</label>
+          <input type="text" id="plan-form-name" required placeholder="Standard Monthly" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Interval</label>
+            <select id="plan-form-interval" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              <option value="Daily">Daily</option>
+              <option value="Weekly">Weekly</option>
+              <option value="Monthly" selected>Monthly</option>
+              <option value="Yearly">Yearly</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Price ($) *</label>
+            <input type="number" step="0.01" min="0" id="plan-form-price" required placeholder="120.00" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tax Rate (%)</label>
+          <input type="number" step="0.1" id="plan-form-tax" value="5.0" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeModal('planModal')" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-sm bg-[#4338ca] hover:bg-[#3730a3] text-white font-medium rounded-xl shadow-sm">Save Plan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Subscription Modal -->
+  <div id="subscriptionModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+    <div class="bg-white rounded-2xl border border-slate-200 max-w-lg w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+        <h3 class="text-lg font-bold text-slate-900">Create Subscription Order</h3>
+        <button onclick="closeModal('subscriptionModal')" class="text-slate-400 hover:text-slate-600">✕</button>
+      </div>
+      <form onsubmit="handleSubscriptionSubmit(event)" class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Customer Account *</label>
+          <select id="sub-form-customer" required class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Billing Plan *</label>
+          <select id="sub-form-plan" onchange="calculateSubTotalPreview()" required class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none"></select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Seats / Qty</label>
+            <input type="number" min="1" id="sub-form-qty" oninput="calculateSubTotalPreview()" value="1" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Initial Status</label>
+            <select id="sub-form-status" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              <option value="Draft">Draft</option>
+              <option value="Quotation">Quotation</option>
+              <option value="Confirmed">Confirmed</option>
+              <option value="Active" selected>Active</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Calculated Total</label>
+          <div id="sub-form-preview-amt" class="px-3.5 py-2 text-sm font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl">$0.00</div>
+        </div>
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeModal('subscriptionModal')" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-sm bg-[#4338ca] hover:bg-[#3730a3] text-white font-medium rounded-xl shadow-sm">Save Subscription</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Customer Direct Subscribe Modal -->
+  <div id="customerSubscribeModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+    <div class="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+        <h3 class="text-lg font-bold text-slate-900">Subscribe to Software Plan</h3>
+        <button onclick="closeModal('customerSubscribeModal')" class="text-slate-400 hover:text-slate-600">✕</button>
+      </div>
+      <form onsubmit="handleCustomerSubscribeSubmit(event)" class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Select Software Plan *</label>
+          <select id="cust-sub-plan" onchange="calculateCustomerSubTotalPreview()" required class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Number of Seats / Licenses *</label>
+          <input type="number" min="1" id="cust-sub-qty" oninput="calculateCustomerSubTotalPreview()" value="1" required class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Estimated Initial Total (incl. Tax)</label>
+          <div id="cust-sub-preview-amt" class="px-3.5 py-2 text-sm font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl">$0.00</div>
+        </div>
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeModal('customerSubscribeModal')" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm">Confirm & Activate</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Record Payment Modal -->
+  <div id="paymentModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+    <div class="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+        <h3 class="text-lg font-bold text-slate-900">Record Incoming Payment</h3>
+        <button onclick="closeModal('paymentModal')" class="text-slate-400 hover:text-slate-600">✕</button>
+      </div>
+      <form onsubmit="handlePaymentSubmit(event)" class="mt-4 space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Select Unpaid Invoice *</label>
+          <select id="pay-form-invoice" onchange="onInvoiceSelectionChange()" required class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none"></select>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Amount ($) *</label>
+            <input type="number" step="0.01" min="0.01" id="pay-form-amount" required class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Payment Method</label>
+            <select id="pay-form-method" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              <option value="Credit Card">Credit Card</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+              <option value="Stripe">Stripe</option>
+              <option value="PayPal">PayPal</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeModal('paymentModal')" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-sm bg-[#4338ca] hover:bg-[#3730a3] text-white font-medium rounded-xl shadow-sm">Record Payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Printable Invoice Document Viewer -->
+  <div id="printableInvoiceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm hidden overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-2xl w-full p-8 shadow-2xl relative my-8">
+      <div class="flex justify-between items-center pb-4 border-b border-slate-100 no-print">
+        <h3 class="text-base font-bold text-slate-900">Presub Tax Invoice</h3>
+        <div class="flex items-center gap-2">
+          <button onclick="window.print()" class="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-[#4338ca] text-xs font-semibold rounded-lg transition flex items-center gap-1.5">
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            Print / Save PDF
+          </button>
+          <button onclick="closeModal('printableInvoiceModal')" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+        </div>
+      </div>
+      <div id="invoice-sheet" class="pt-6"></div>
+    </div>
+  </div>
+
+  <!-- Supabase Connection Config Modal -->
+  <div id="supabaseConfigModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+    <div class="bg-white rounded-2xl border border-slate-200 max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
+            <i data-lucide="database" class="w-4 h-4"></i>
+          </div>
+          <h3 class="text-lg font-bold text-slate-900">Supabase Database Connection</h3>
+        </div>
+        <button onclick="closeModal('supabaseConfigModal')" class="text-slate-400 hover:text-slate-600">✕</button>
+      </div>
+      <form onsubmit="handleSupabaseConfigSave(event)" class="mt-4 space-y-4">
+        <p class="text-xs text-slate-500 leading-relaxed">
+          Enter your Supabase Project URL and Public Anon Key (from <strong>Project Settings &rarr; API</strong>) after running <code>supabase_setup.sql</code> in the SQL Editor.
+        </p>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Supabase Project URL *</label>
+          <input type="url" id="sb-config-url" required placeholder="https://xyzcompany.supabase.co" class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Supabase Anon Public Key *</label>
+          <input type="text" id="sb-config-key" required placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." class="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono">
+        </div>
+        <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+          <button type="button" onclick="disconnectSupabaseConfig()" class="text-xs text-rose-600 hover:underline font-medium">Reset / Clear Keys</button>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="closeModal('supabaseConfigModal')" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+            <button type="submit" class="px-5 py-2 text-sm bg-[#4338ca] hover:bg-[#3730a3] text-white font-medium rounded-xl shadow-sm">Connect & Sync</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Help / Support Info Modal -->
+  <div id="help-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden">
+    <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center border border-slate-100">
+      <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="life-buoy" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-lg font-bold text-slate-900">Presub Help Desk</h3>
+      <p class="text-xs text-slate-500 mt-2">
+        Questions about subscriptions, invoice settlement, or operator access credentials?
+      </p>
+      <div class="mt-4 p-3 bg-slate-50 rounded-xl text-xs text-slate-600 font-mono">
+        billing@presub.internal
+      </div>
+      <button 
+        type="button" 
+        onclick="toggleHelpModal(false)"
+        class="mt-4 w-full py-2.5 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 transition-colors"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toastNotification" class="fixed bottom-6 right-6 z-50 max-w-sm bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 transition-transform duration-300 translate-y-32">
+    <div id="toastIcon" class="w-6 h-6 flex items-center justify-center text-emerald-400 font-bold shrink-0">✓</div>
+    <div class="flex-1">
+      <p id="toastMessage" class="text-xs font-medium text-slate-100">Action completed.</p>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       APPLICATION LOGIC & CORE ARCHITECTURE
+       ========================================================================= -->
+  <script>
+    const STORAGE_KEY = 'PRESUB_SUBADMIN_CLEAN_V3';
+
+    // Default Supabase credentials (can be pasted here OR set directly via the in-app "Configure Supabase DB" modal)
+    let SUPABASE_URL = localStorage.getItem('PRESUB_SB_URL') || 'YOUR_SUPABASE_PROJECT_URL';
+    let SUPABASE_ANON_KEY = localStorage.getItem('PRESUB_SB_KEY') || 'YOUR_SUPABASE_ANON_KEY';
+    let supabaseClient = null;
+
+    function initSupabaseClient() {
+      if (SUPABASE_URL && SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
+        try {
+          supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          updateDbStatusBadges(true);
+          return true;
+        } catch (err) {
+          console.error('Supabase init error:', err);
+        }
+      }
+      supabaseClient = null;
+      updateDbStatusBadges(false);
+      return false;
+    }
+
+    function updateDbStatusBadges(isConnected) {
+      const pill = document.getElementById('db-connection-pill');
+      const headerStatus = document.getElementById('header-db-status');
+      if (pill) {
+        pill.textContent = isConnected ? 'Supabase Connected ✓' : 'Configure Supabase DB';
+      }
+      if (headerStatus) {
+        headerStatus.textContent = isConnected ? 'DB Connected ✓' : 'Connect DB';
+      }
+    }
+
+    async function handleSupabaseConfigSave(e) {
+      e.preventDefault();
+      const urlVal = document.getElementById('sb-config-url').value.trim();
+      const keyVal = document.getElementById('sb-config-key').value.trim();
+      localStorage.setItem('PRESUB_SB_URL', urlVal);
+      localStorage.setItem('PRESUB_SB_KEY', keyVal);
+      SUPABASE_URL = urlVal;
+      SUPABASE_ANON_KEY = keyVal;
+      initSupabaseClient();
+      closeModal('supabaseConfigModal');
+      await loadState();
+      showToast('Connected to Supabase PostgreSQL database!');
+    }
+
+    function disconnectSupabaseConfig() {
+      localStorage.removeItem('PRESUB_SB_URL');
+      localStorage.removeItem('PRESUB_SB_KEY');
+      SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
+      SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+      supabaseClient = null;
+      updateDbStatusBadges(false);
+      closeModal('supabaseConfigModal');
+      showToast('Supabase credentials cleared.');
+    }
+
+    // Application State Model
+    let state = {
+      userRole: null, // 'admin' | 'customer' | null
+      loggedInCustomer: null,
+      currentAdminView: 'dashboard',
+      adminAccount: {
+        id: 'admin-1',
+        name: 'Ops Administrator',
+        email: 'ops.admin@presub.internal',
+        password: 'Admin@123',
+        role: 'admin',
+        token: '123456'
+      },
+      customers: [],
+      products: [],
+      plans: [],
+      quotations: [],
+      subscriptions: [],
+      invoices: [],
+      payments: [],
+      discounts: [
+        { id: 'd-1', name: 'Annual Prepay 10%', type: 'Percentage', value: 10, minSeats: 1 },
+        { id: 'd-2', name: 'Enterprise Volume $200 Off', type: 'Fixed', value: 200, minSeats: 10 }
+      ],
+      taxes: [
+        { id: 't-1', name: 'Standard Software VAT', rate: 5.0, country: 'US / Default' },
+        { id: 't-2', name: 'Digital Services Tax', rate: 7.5, country: 'EU / UK' }
+      ]
+    };
+
+    async function loadState() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.customers) state.customers = parsed.customers;
+          if (parsed && parsed.products) state.products = parsed.products;
+          if (parsed && parsed.plans) state.plans = parsed.plans;
+          if (parsed && parsed.subscriptions) state.subscriptions = parsed.subscriptions;
+          if (parsed && parsed.invoices) state.invoices = parsed.invoices;
+          if (parsed && parsed.payments) state.payments = parsed.payments;
+          if (parsed && parsed.adminAccount) state.adminAccount = { ...state.adminAccount, ...parsed.adminAccount };
+        }
+      } catch (e) {
+        console.error('Local storage load error:', e);
+      }
+
+      // Ensure default fallback catalog if empty
+      if (state.products.length === 0) {
+        state.products = [
+          { id: 'prod-101', name: 'BrightERP Software', category: 'Enterprise', salesPrice: 120.00, variant: 'Standard Suite', created: '2026-01-10' },
+          { id: 'prod-102', name: 'Priority Support Addon', category: 'Support', salesPrice: 49.00, variant: '24/7 SLA', created: '2026-01-15' },
+          { id: 'prod-103', name: 'Security Gateway', category: 'Security', salesPrice: 299.00, variant: 'Enterprise Shield', created: '2026-02-01' }
+        ];
+      }
+      if (state.plans.length === 0) {
+        state.plans = [
+          { id: 'plan-201', productId: 'prod-101', name: 'ERP Standard Monthly', interval: 'Monthly', price: 120.00, taxRate: 5.0, created: '2026-01-10' },
+          { id: 'plan-202', productId: 'prod-102', name: 'Priority Support Monthly', interval: 'Monthly', price: 49.00, taxRate: 5.0, created: '2026-01-15' },
+          { id: 'plan-203', productId: 'prod-103', name: 'Security Gateway Yearly', interval: 'Yearly', price: 2990.00, taxRate: 5.0, created: '2026-02-01' }
+        ];
+      }
+
+      initSupabaseClient();
+      if (!supabaseClient) return;
+
+      try {
+        const [
+          custRes, prodRes, planRes, quoteRes,
+          subRes, invRes, payRes, discRes, taxRes
+        ] = await Promise.all([
+          supabaseClient.from('customers').select('*').order('created', { ascending: false }),
+          supabaseClient.from('products').select('*').order('created', { ascending: false }),
+          supabaseClient.from('plans').select('*').order('created', { ascending: false }),
+          supabaseClient.from('quotations').select('*'),
+          supabaseClient.from('subscriptions').select('*').order('created', { ascending: false }),
+          supabaseClient.from('invoices').select('*').order('issued', { ascending: false }),
+          supabaseClient.from('payments').select('*').order('paymentDate', { ascending: false }),
+          supabaseClient.from('discounts').select('*'),
+          supabaseClient.from('taxes').select('*')
+        ]);
+
+        if (!custRes.error && custRes.data) {
+          const adminRow = custRes.data.find(u => (u.role || '') === 'admin' || u.email === 'ops.admin@presub.internal');
+          if (adminRow) {
+            state.adminAccount = { ...state.adminAccount, ...adminRow, password: adminRow.password || 'Admin@123', token: '123456' };
+          }
+          const dbCustomers = custRes.data.filter(u => (u.role || 'customer') === 'customer' && u.email !== 'ops.admin@presub.internal');
+          
+          const map = new Map();
+          state.customers.forEach(c => map.set(c.email.toLowerCase(), c));
+          dbCustomers.forEach(dc => {
+            const existing = map.get(dc.email.toLowerCase());
+            map.set(dc.email.toLowerCase(), {
+              ...(existing || {}),
+              ...dc,
+              password: dc.password || (existing ? existing.password : 'Pass@1234')
+            });
+          });
+          state.customers = Array.from(map.values());
+        }
+
+        if (!prodRes.error && prodRes.data && prodRes.data.length > 0) state.products = prodRes.data;
+        if (!planRes.error && planRes.data && planRes.data.length > 0) state.plans = planRes.data;
+        if (!quoteRes.error && quoteRes.data) state.quotations = quoteRes.data;
+        if (!subRes.error && subRes.data) state.subscriptions = subRes.data;
+        if (!invRes.error && invRes.data) state.invoices = invRes.data;
+        if (!payRes.error && payRes.data) state.payments = payRes.data;
+        if (!discRes.error && discRes.data && discRes.data.length > 0) state.discounts = discRes.data;
+        if (!taxRes.error && taxRes.data && taxRes.data.length > 0) state.taxes = taxRes.data;
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        if (state.userRole === 'admin') refreshAllAdminData();
+        if (state.userRole === 'customer') {
+          // Keep logged in customer reference up to date
+          const refreshedCust = state.customers.find(c => c.id === state.loggedInCustomer.id);
+          if (refreshedCust) state.loggedInCustomer = refreshedCust;
+          renderCustomerPortal();
+        }
+      } catch (err) {
+        console.error('Supabase fetch error:', err);
+      }
+    }
+
+    async function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.error(e);
+      }
+
+      if (!supabaseClient) return;
+
+      try {
+        for (const cust of state.customers) {
+          await supabaseClient.from('customers').upsert([cust], { onConflict: 'email' }).catch(err => console.warn('Supabase customer upsert error:', err));
+        }
+        if (state.products.length > 0) {
+          await supabaseClient.from('products').upsert(state.products, { onConflict: 'id' }).catch(err => console.warn('Supabase product upsert error:', err));
+        }
+        if (state.plans.length > 0) {
+          await supabaseClient.from('plans').upsert(state.plans, { onConflict: 'id' }).catch(err => console.warn('Supabase plan upsert error:', err));
+        }
+        if (state.subscriptions.length > 0) {
+          await supabaseClient.from('subscriptions').upsert(state.subscriptions, { onConflict: 'id' }).catch(err => console.warn('Supabase subscription upsert error:', err));
+        }
+        if (state.invoices.length > 0) {
+          await supabaseClient.from('invoices').upsert(state.invoices, { onConflict: 'id' }).catch(err => console.warn('Supabase invoice upsert error:', err));
+        }
+        if (state.payments.length > 0) {
+          await supabaseClient.from('payments').upsert(state.payments, { onConflict: 'id' }).catch(err => console.warn('Supabase payment upsert error:', err));
+        }
+      } catch (err) {
+        console.error('Supabase sync error:', err);
+      }
+    }
+
+    // Role switcher state in login modal
+    let currentRole = 'customer';
+
+    function setAuthRole(role) {
+      currentRole = role;
+      const tabCustomer = document.getElementById('tab-customer');
+      const tabAdmin = document.getElementById('tab-admin');
+      const brandLogoBg = document.getElementById('brand-logo-bg');
+      const brandSubtext = document.getElementById('brand-subtext');
+      const formHeading = document.getElementById('form-heading');
+      const formSubheading = document.getElementById('form-subheading');
+      const labelIdentifier = document.getElementById('label-identifier');
+      const inputIdentifier = document.getElementById('identifier');
+      const admin2FaContainer = document.getElementById('admin-2fa-container');
+      const securityKey = document.getElementById('security-key');
+      const submitBtn = document.getElementById('submit-btn');
+      const submitText = document.getElementById('submit-text');
+      const footerPrompt = document.getElementById('footer-prompt');
+      const forgotLink = document.getElementById('forgot-link');
+
+      document.getElementById('status-banner').classList.add('hidden');
+
+      if (role === 'admin') {
+        tabAdmin.className = 'flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition-all-custom bg-white text-purple-600 shadow-sm';
+        tabCustomer.className = 'flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all-custom text-slate-600 hover:text-slate-900';
+
+        brandLogoBg.className = 'w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center text-white shadow-md shadow-purple-500/20 transition-all-custom';
+        brandSubtext.textContent = 'Subscription Billing Ops';
+
+        formHeading.textContent = 'Ops Admin Authentication';
+        formSubheading.textContent = 'Restricted operator console. Manage plan tiers, billing schedules, and subscriptions.';
+        labelIdentifier.textContent = 'Operator Username / Email';
+        inputIdentifier.placeholder = 'ops.admin@presub.internal';
+        if (!inputIdentifier.value || inputIdentifier.value.includes('alex')) {
+          inputIdentifier.value = 'ops.admin@presub.internal';
+        }
+
+        forgotLink.className = 'text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors';
+        submitBtn.className = 'w-full py-3 px-4 rounded-xl text-white font-medium text-sm shadow-md transition-all-custom flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 shadow-purple-500/25 active:scale-[0.99]';
+        submitText.textContent = 'Authenticate as Billing Admin';
+
+        admin2FaContainer.classList.remove('hidden');
+        securityKey.value = '123456';
+        securityKey.setAttribute('required', 'true');
+        footerPrompt.innerHTML = '';
+      } else {
+        tabCustomer.className = 'flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-semibold transition-all-custom bg-white text-blue-600 shadow-sm';
+        tabAdmin.className = 'flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all-custom text-slate-600 hover:text-slate-900';
+
+        brandLogoBg.className = 'w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 transition-all-custom';
+        brandSubtext.textContent = 'Subscription Management System';
+
+        formHeading.textContent = 'Customer Login';
+        formSubheading.textContent = 'Sign in to access your active subscription plans, renewals, and invoice history.';
+        labelIdentifier.textContent = 'Customer Email';
+        inputIdentifier.placeholder = 'you@company.com';
+        if (inputIdentifier.value.includes('ops.admin@presub.internal')) {
+          inputIdentifier.value = '';
+        }
+
+        forgotLink.className = 'text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors';
+        submitBtn.className = 'w-full py-3 px-4 rounded-xl text-white font-medium text-sm shadow-md transition-all-custom flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 shadow-blue-500/25 active:scale-[0.99]';
+        submitText.textContent = 'Access Customer Portal';
+
+        admin2FaContainer.classList.add('hidden');
+        securityKey.removeAttribute('required');
+        footerPrompt.innerHTML = `New to Presub? <a href="#signup" onclick="closeSignInModal(); openSignUpView(); return false;" class="font-semibold text-blue-600 hover:underline">Register customer account</a>`;
+      }
+      lucide.createIcons();
+    }
+
+    function showLandingView() {
+      closeSignInModal();
+      document.getElementById('view-signup').classList.add('hidden');
+      document.getElementById('view-forgot').classList.add('hidden');
+      document.getElementById('view-landing').classList.remove('hidden');
+      document.getElementById('brand-subtext').textContent = 'Subscription Management System';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function openSignUpView() {
+      closeSignInModal();
+      document.getElementById('view-landing').classList.add('hidden');
+      document.getElementById('view-forgot').classList.add('hidden');
+      document.getElementById('view-signup').classList.remove('hidden');
+      document.getElementById('brand-subtext').textContent = 'Customer Registration';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function openForgotView() {
+      closeSignInModal();
+      document.getElementById('view-landing').classList.add('hidden');
+      document.getElementById('view-signup').classList.add('hidden');
+      document.getElementById('view-forgot').classList.remove('hidden');
+      document.getElementById('brand-subtext').textContent = 'Account Recovery';
+
+      const emailVal = document.getElementById('identifier').value.trim();
+      if (emailVal && emailVal.includes('@')) {
+        document.getElementById('forgot-email').value = emailVal;
+      }
+      document.getElementById('forgot-status-banner').classList.add('hidden');
+      document.getElementById('otp-form').classList.add('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function openSignInModal(role = 'customer') {
+      document.getElementById('view-forgot').classList.add('hidden');
+      document.getElementById('view-signup').classList.add('hidden');
+      document.getElementById('view-landing').classList.remove('hidden');
+      setAuthRole(role);
+
+      const modal = document.getElementById('signin-modal');
+      const card = document.getElementById('signin-modal-card');
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-95');
+      card.classList.add('scale-100');
+    }
+
+    function closeSignInModal() {
+      const modal = document.getElementById('signin-modal');
+      const card = document.getElementById('signin-modal-card');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-100');
+      card.classList.add('scale-95');
+      document.getElementById('status-banner').classList.add('hidden');
+    }
+
+    document.getElementById('signin-modal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('signin-modal')) {
+        closeSignInModal();
+      }
+    });
+
+    function toggleHelpModal(show) {
+      const modal = document.getElementById('help-modal');
+      if (show) modal.classList.remove('hidden');
+      else modal.classList.add('hidden');
+    }
+
+    function togglePasswordVisibilityField(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (!input || !icon) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        input.type = 'password';
+        icon.setAttribute('data-lucide', 'eye');
+      }
+      lucide.createIcons();
+    }
+
+    // SIGN IN LOGIC
+    async function handleFormSubmit(event) {
+      event.preventDefault();
+      const identifierVal = document.getElementById('identifier').value.trim();
+      const passwordVal = document.getElementById('password').value;
+      const keyVal = document.getElementById('security-key').value.trim();
+
+      if (!identifierVal || !passwordVal) {
+        showAuthBanner('error', 'Please fill in both email and password.');
+        return;
+      }
+
+      const submitBtn = document.getElementById('submit-btn');
+      const btnArrow = document.getElementById('btn-arrow');
+      const btnSpinner = document.getElementById('btn-spinner');
+      const submitText = document.getElementById('submit-text');
+      const defaultBtnLabel = currentRole === 'admin' ? 'Authenticate as Billing Admin' : 'Access Customer Portal';
+
+      submitBtn.disabled = true;
+      btnArrow.classList.add('hidden');
+      btnSpinner.classList.remove('hidden');
+      submitText.textContent = currentRole === 'admin' ? 'Verifying Admin Credentials...' : 'Verifying Customer Account...';
+
+      try {
+        let matchedUser = null;
+
+        if (currentRole === 'admin') {
+          if (state.adminAccount.email.toLowerCase() === identifierVal.toLowerCase()) {
+            matchedUser = state.adminAccount;
+          }
+        } else {
+          matchedUser = state.customers.find(
+            c => c.email.toLowerCase() === identifierVal.toLowerCase() && (c.role || 'customer') === 'customer'
+          );
+        }
+
+        if (supabaseClient) {
+          try {
+            const { data, error } = await supabaseClient
+              .from('customers')
+              .select('*')
+              .ilike('email', identifierVal);
+
+            if (!error && data && data.length > 0) {
+              const dbRecord = data.find(u => u.role === currentRole) || data[0];
+              if (dbRecord) {
+                matchedUser = {
+                  ...(matchedUser || {}),
+                  ...dbRecord,
+                  password: dbRecord.password || (matchedUser ? matchedUser.password : 'Pass@1234')
+                };
+              }
+            }
+          } catch (dbErr) {
+            console.warn('Supabase auth check fallback to local:', dbErr);
+          }
+        }
+
+        if (currentRole === 'admin') {
+          const adminRecord = matchedUser || state.adminAccount;
+          if (!adminRecord || adminRecord.email.toLowerCase() !== 'ops.admin@presub.internal') {
+            showAuthBanner('error', 'Admin account not found. Use ops.admin@presub.internal.');
+            return;
+          }
+          const adminPass = adminRecord.password || 'Admin@123';
+          if (adminPass !== passwordVal && adminPass !== passwordVal.trim()) {
+            showAuthBanner('error', 'Invalid Admin password. (Default: Admin@123)');
+            return;
+          }
+          if (keyVal !== '123456') {
+            showAuthBanner('error', 'Invalid 2FA Security Token (Expected: 123456).');
+            return;
+          }
+          launchAdminDashboard();
+          return;
+        }
+
+        if (!matchedUser || matchedUser.role === 'admin') {
+          showAuthBanner('error', 'No registered customer found with this email. Please create an account first.');
+          return;
+        }
+
+        const custPass = matchedUser.password || 'Pass@1234';
+        if (custPass !== passwordVal && custPass !== passwordVal.trim()) {
+          showAuthBanner('error', 'Incorrect email or password. Please try again.');
+          return;
+        }
+
+        if (matchedUser.status && matchedUser.status !== 'Active') {
+          showAuthBanner('error', 'This customer account is currently inactive.');
+          return;
+        }
+
+        const idx = state.customers.findIndex(c => c.email.toLowerCase() === matchedUser.email.toLowerCase());
+        if (idx === -1) {
+          state.customers.push(matchedUser);
+        } else {
+          state.customers[idx] = matchedUser;
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+        launchCustomerPortal(matchedUser);
+      } catch (err) {
+        console.error('Authentication error:', err);
+        showAuthBanner('error', 'Unable to verify credentials.');
+      } finally {
+        submitBtn.disabled = false;
+        btnSpinner.classList.add('hidden');
+        btnArrow.classList.remove('hidden');
+        submitText.textContent = defaultBtnLabel;
+      }
+    }
+
+    function showAuthBanner(type, message) {
+      const banner = document.getElementById('status-banner');
+      const msg = document.getElementById('status-message');
+      const icon = document.getElementById('status-icon');
+      banner.classList.remove('hidden', 'bg-emerald-50', 'text-emerald-800', 'border-emerald-200', 'bg-red-50', 'text-red-800', 'border-red-200');
+
+      if (type === 'success') {
+        banner.classList.add('bg-emerald-50', 'text-emerald-800', 'border-emerald-200');
+        icon.setAttribute('data-lucide', 'check-circle-2');
+        icon.className = 'w-5 h-5 flex-shrink-0 mt-0.5 text-emerald-600';
+      } else {
+        banner.classList.add('bg-red-50', 'text-red-800', 'border-red-200');
+        icon.setAttribute('data-lucide', 'alert-circle');
+        icon.className = 'w-5 h-5 flex-shrink-0 mt-0.5 text-red-600';
+      }
+      msg.textContent = message;
+      lucide.createIcons();
+    }
+
+    async function handleSignUpSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('reg-name').value.trim();
+      const email = document.getElementById('reg-email').value.trim();
+      const company = document.getElementById('reg-company').value.trim();
+      const pass = document.getElementById('reg-password').value;
+      const confirmPass = document.getElementById('reg-confirm-password').value;
+
+      const hasUpper = /[A-Z]/.test(pass);
+      const hasLower = /[a-z]/.test(pass);
+      const hasSpecial = /[^A-Za-z0-9]/.test(pass);
+      if (pass.length <= 8 || !hasUpper || !hasLower || !hasSpecial) {
+        alert('Password must be more than 8 characters and include at least one uppercase letter, one lowercase letter, and one special character.');
+        return;
+      }
+
+      if (pass !== confirmPass) {
+        alert('Passwords do not match. Please re-enter.');
+        return;
+      }
+
+      if (supabaseClient) {
+        const { data: existingUser } = await supabaseClient
+          .from('customers')
+          .select('id')
+          .ilike('email', email)
+          .maybeSingle();
+        if (existingUser) {
+          alert('An account with this email already exists in the database.');
+          return;
+        }
+      } else if (
+        state.customers.some(c => c.email.toLowerCase() === email.toLowerCase()) ||
+        state.adminAccount.email.toLowerCase() === email.toLowerCase()
+      ) {
+        alert('An account with this email already exists.');
+        return;
+      }
+
+      const newCustomer = {
+        id: 'cust-' + Date.now(),
+        name,
+        email,
+        password: pass,
+        company: company || 'Personal',
+        phone: '-',
+        role: 'customer',
+        status: 'Active',
+        created: new Date().toISOString().slice(0, 10)
+      };
+
+      state.customers.push(newCustomer);
+      await saveState();
+
+      document.getElementById('signup-form').reset();
+      showLandingView();
+      openSignInModal('customer');
+      document.getElementById('identifier').value = email;
+      document.getElementById('password').value = '';
+      showAuthBanner('success', `Account created for ${name}! Enter your password to sign in.`);
+    }
+
+    function handleForgotSubmit(e) {
+      e.preventDefault();
+      const emailVal = document.getElementById('forgot-email').value.trim();
+      const banner = document.getElementById('forgot-status-banner');
+      const msg = document.getElementById('forgot-status-message');
+      const icon = document.getElementById('forgot-status-icon');
+
+      banner.classList.remove('hidden', 'bg-red-50', 'text-red-800', 'border-red-200');
+      banner.classList.add('bg-emerald-50', 'text-emerald-800', 'border-emerald-200');
+      icon.setAttribute('data-lucide', 'check-circle-2');
+      icon.className = 'w-5 h-5 flex-shrink-0 mt-0.5 text-emerald-600';
+      msg.textContent = `Verification OTP sent to ${emailVal}. Enter 123456 below to continue.`;
+
+      document.getElementById('otp-form').classList.remove('hidden');
+      document.getElementById('otp-code').value = '123456';
+      lucide.createIcons();
+    }
+
+    function handleOtpSubmit(e) {
+      e.preventDefault();
+      openSignInModal('customer');
+      showAuthBanner('success', 'OTP verified! You may now sign in with your credentials.');
+    }
+
+    // =========================================================================
+    // LAUNCH WORKSPACES
+    // =========================================================================
+    function launchAdminDashboard() {
+      closeSignInModal();
+      state.userRole = 'admin';
+      state.loggedInCustomer = null;
+      saveState();
+
+      document.getElementById('auth-wrapper').classList.add('hidden');
+      document.getElementById('app-workspace').classList.remove('hidden');
+      
+      document.getElementById('sidebar').classList.remove('hidden');
+      document.getElementById('sidebarToggleBtn').classList.remove('hidden');
+
+      document.getElementById('user-display-name').textContent = 'Ops Administrator';
+      document.getElementById('user-display-role').textContent = 'BILLING OPS ADMIN';
+      document.getElementById('user-display-role').className = 'text-[11px] font-mono text-purple-600 font-semibold';
+      document.getElementById('user-avatar-badge').textContent = 'AD';
+      document.getElementById('user-avatar-badge').className = 'w-9 h-9 rounded-full bg-purple-100 text-purple-700 border border-purple-200 flex items-center justify-center font-bold text-xs tracking-wider shadow-sm select-none';
+
+      navigate(state.currentAdminView || 'dashboard');
+      refreshAllAdminData();
+      showToast('Welcome, Billing Ops Admin.');
+    }
+
+    function launchCustomerPortal(customer) {
+      closeSignInModal();
+      state.userRole = 'customer';
+      state.loggedInCustomer = customer;
+      saveState();
+
+      document.getElementById('auth-wrapper').classList.add('hidden');
+      document.getElementById('app-workspace').classList.remove('hidden');
+
+      document.getElementById('sidebar').classList.add('hidden');
+      document.getElementById('sidebarToggleBtn').classList.add('hidden');
+
+      document.getElementById('page-title').textContent = 'Customer Portal';
+      document.getElementById('page-subtitle').textContent = 'Manage your subscriptions, view invoices, and track payments';
+      document.getElementById('user-display-name').textContent = customer.name;
+      document.getElementById('user-display-role').textContent = 'CUSTOMER PORTAL';
+      document.getElementById('user-display-role').className = 'text-[11px] font-mono text-blue-600 font-semibold';
+      document.getElementById('user-avatar-badge').textContent = customer.name.substring(0, 2).toUpperCase();
+      document.getElementById('user-avatar-badge').className = 'w-9 h-9 rounded-full bg-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center font-bold text-xs tracking-wider shadow-sm select-none';
+
+      hideAllViews();
+      document.getElementById('view-customer-portal').classList.remove('hidden');
+
+      renderCustomerPortal();
+      showToast(`Welcome back, ${customer.name}.`);
+    }
+
+    function handleSignOut() {
+      state.userRole = null;
+      state.loggedInCustomer = null;
+      saveState();
+
+      document.getElementById('app-workspace').classList.add('hidden');
+      document.getElementById('auth-wrapper').classList.remove('hidden');
+      showLandingView();
+      showToast('Signed out successfully.');
+    }
+
+    function hideAllViews() {
+      const views = [
+        'view-dashboard', 'view-customers', 'view-products', 'view-plans',
+        'view-quotations', 'view-subscriptions', 'view-invoices', 'view-payments',
+        'view-discounts', 'view-reports', 'view-customer-portal'
+      ];
+      views.forEach(v => {
+        const el = document.getElementById(v);
+        if (el) el.classList.add('hidden');
+      });
+    }
+
+    function navigate(viewName) {
+      if (state.userRole !== 'admin') return;
+      state.currentAdminView = viewName;
+      saveState();
+
+      hideAllViews();
+      const currentEl = document.getElementById(`view-${viewName}`);
+      if (currentEl) currentEl.classList.remove('hidden');
+
+      const navIds = ['dashboard', 'customers', 'products', 'plans', 'quotations', 'subscriptions', 'invoices', 'payments', 'discounts', 'reports'];
+      navIds.forEach(id => {
+        const btn = document.getElementById(`nav-${id}`);
+        if (btn) {
+          if (id === viewName) {
+            btn.className = 'w-full flex items-center gap-3.5 px-4 py-3 text-sm font-medium rounded-xl bg-[#4f46e5] text-white shadow-md shadow-indigo-600/30';
+          } else {
+            btn.className = 'w-full flex items-center gap-3.5 px-4 py-3 text-sm font-medium rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800/60';
+          }
+        }
+      });
+
+      const titles = {
+        dashboard: { title: 'Dashboard', sub: 'Overview of subscription metrics and billing' },
+        customers: { title: 'Customers', sub: 'Manage customer accounts and company directories' },
+        products: { title: 'Products & Variants', sub: 'Catalog of billable software and addon surcharges' },
+        plans: { title: 'Subscription Plans', sub: 'Recurring billing intervals and tax rates' },
+        quotations: { title: 'Quotations & Templates', sub: 'Customer proposals and convert-to-sub offers' },
+        subscriptions: { title: 'Subscriptions', sub: 'Track and transition subscription state machine' },
+        invoices: { title: 'Invoices', sub: 'Billing schedules, PDF print generation, and payment terms' },
+        payments: { title: 'Payments', sub: 'Record and track payment methods and bank references' },
+        discounts: { title: 'Discounts & Taxes', sub: 'Volume-based percentage rules and regional taxes' },
+        reports: { title: 'Reports & Analytics', sub: 'Real-time subscription intervals and collected revenue' }
+      };
+
+      if (titles[viewName]) {
+        document.getElementById('page-title').textContent = titles[viewName].title;
+        document.getElementById('page-subtitle').textContent = titles[viewName].sub;
+      }
+
+      refreshAllAdminData();
+
+      const sb = document.getElementById('sidebar');
+      const backdrop = document.getElementById('mobileBackdrop');
+      if (sb && !sb.classList.contains('-translate-x-full')) {
+        sb.classList.add('-translate-x-full');
+        backdrop.classList.add('hidden');
+      }
+    }
+
+    function toggleSidebar() {
+      const sb = document.getElementById('sidebar');
+      const backdrop = document.getElementById('mobileBackdrop');
+      if (sb.classList.contains('-translate-x-full')) {
+        sb.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+      } else {
+        sb.classList.add('-translate-x-full');
+        backdrop.classList.add('hidden');
+      }
+    }
+
+    function formatCurrency(val) {
+      return '$' + (Number(val) || 0).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    let toastTimer;
+    function showToast(message) {
+      const toast = document.getElementById('toastNotification');
+      document.getElementById('toastMessage').textContent = message;
+      toast.classList.remove('translate-y-32');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.add('translate-y-32');
+      }, 3500);
+    }
+
+    // =========================================================================
+    // ADMIN ENGINE DATA REFRESH & RENDERING
+    // =========================================================================
+    function refreshAllAdminData() {
+      updateDashboardStats();
+      renderCustomersTable();
+      renderProductsTable();
+      renderPlansTable();
+      renderQuotationsTable();
+      renderSubscriptionsTable();
+      renderInvoicesTable();
+      renderPaymentsTable();
+      renderDiscountsAndTaxes();
+      if (state.currentAdminView === 'reports') {
+        renderReportsCharts();
+      }
+      lucide.createIcons();
+    }
+
+    function updateDashboardStats() {
+      const activeSubs = state.subscriptions.filter(s => s.status === 'Active');
+      const paidInvoices = state.invoices.filter(i => i.status === 'Paid');
+      const outstandingInvoices = state.invoices.filter(i => i.status === 'Pending');
+      const overdueInvoices = state.invoices.filter(i => i.status === 'Overdue');
+
+      const totalRevenue = state.payments.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+      const totalOutstanding = outstandingInvoices.reduce((acc, i) => acc + Number(i.total || 0), 0);
+
+      document.getElementById('dash-active-subs').textContent = activeSubs.length;
+      document.getElementById('dash-total-revenue').textContent = formatCurrency(totalRevenue);
+      document.getElementById('dash-outstanding').textContent = formatCurrency(totalOutstanding);
+      document.getElementById('dash-overdue-count').textContent = overdueInvoices.length;
+
+      document.getElementById('dash-total-customers').textContent = state.customers.length;
+      document.getElementById('dash-total-invoices').textContent = state.invoices.length;
+      document.getElementById('dash-paid-invoices').textContent = paidInvoices.length;
+
+      const recentInvBox = document.getElementById('dash-recent-invoices');
+      if (state.invoices.length === 0) {
+        recentInvBox.innerHTML = '<span class="text-slate-400">No invoices yet.</span>';
+      } else {
+        const sorted = [...state.invoices].slice(-3).reverse();
+        recentInvBox.innerHTML = `
+          <div class="divide-y divide-slate-100 text-left w-full">
+            ${sorted.map(inv => {
+              const cust = state.customers.find(c => c.id === inv.customerId);
+              const badgeClass = inv.status === 'Paid' ? 'bg-emerald-50 text-emerald-700' : (inv.status === 'Overdue' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700');
+              return `
+                <div class="py-2 flex items-center justify-between">
+                  <div>
+                    <button onclick="viewInvoiceDoc('${inv.id}')" class="font-semibold text-slate-800 text-sm hover:text-indigo-600">${inv.invoiceNumber}</button>
+                    <p class="text-xs text-slate-500">${cust ? cust.name : 'Unknown'}</p>
+                  </div>
+                  <div class="text-right">
+                    <p class="font-semibold text-slate-900 text-sm">${formatCurrency(inv.total)}</p>
+                    <span class="inline-block text-[11px] font-medium px-2 py-0.5 rounded-full ${badgeClass}">${inv.status}</span>
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>`;
+      }
+
+      const recentSubBox = document.getElementById('dash-recent-subscriptions');
+      if (state.subscriptions.length === 0) {
+        recentSubBox.innerHTML = '<span class="text-slate-400">No subscriptions yet.</span>';
+      } else {
+        const sortedSubs = [...state.subscriptions].slice(-3).reverse();
+        recentSubBox.innerHTML = `
+          <div class="divide-y divide-slate-100 text-left w-full">
+            ${sortedSubs.map(sub => {
+              const cust = state.customers.find(c => c.id === sub.customerId);
+              const plan = state.plans.find(p => p.id === sub.planId);
+              return `
+                <div class="py-2 flex items-center justify-between">
+                  <div>
+                    <p class="font-semibold text-slate-800 text-sm">${cust ? cust.name : 'Customer'}</p>
+                    <p class="text-xs text-slate-500">${plan ? plan.name : 'Plan'}</p>
+                  </div>
+                  <div class="text-right">
+                    <p class="font-semibold text-slate-900 text-sm">${formatCurrency(sub.amount)}</p>
+                    <span class="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full ${getStatusPillClass(sub.status)}">${sub.status}</span>
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>`;
+      }
+    }
+
+    function simulateBillingDay() {
+      const activeSubs = state.subscriptions.filter(s => s.status === 'Active');
+      if (activeSubs.length === 0) {
+        showToast('No active subscriptions found to bill.');
+        return;
+      }
+
+      const today = new Date().toISOString().slice(0, 10);
+      const dueDate = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+      let count = 0;
+
+      activeSubs.forEach(sub => {
+        const invNum = `INV-${Math.floor(1000 + Math.random() * 9000)}`;
+        state.invoices.push({
+          id: 'inv-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+          invoiceNumber: invNum,
+          customerId: sub.customerId,
+          subscriptionId: sub.id,
+          issued: today,
+          due: dueDate,
+          subtotal: sub.amount * 0.95,
+          tax: sub.amount * 0.05,
+          total: sub.amount,
+          status: 'Pending'
+        });
+        count++;
+      });
+
+      saveState();
+      refreshAllAdminData();
+      showToast(`Billing Day Complete: Created ${count} invoice(s).`);
+    }
+
+    function renderCustomersTable() {
+      const search = (document.getElementById('cust-search')?.value || '').toLowerCase();
+      const tbody = document.getElementById('customers-table-body');
+      document.getElementById('customers-count-subtitle').textContent = `${state.customers.length} total customers`;
+
+      let filtered = state.customers.filter(c => c.name.toLowerCase().includes(search) || (c.company || '').toLowerCase().includes(search) || c.email.toLowerCase().includes(search));
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-12 text-center text-slate-400 font-normal text-sm">No customers found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(c => `
+        <tr class="hover:bg-slate-50/80 transition">
+          <td class="py-3.5 px-4 font-medium text-slate-900">${c.name}<div class="text-xs text-slate-400">${c.email}</div></td>
+          <td class="py-3.5 px-4 text-slate-500">${c.company || '-'}</td>
+          <td class="py-3.5 px-4 text-slate-500">${c.phone || '-'}</td>
+          <td class="py-3.5 px-4"><span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">${c.status}</span></td>
+          <td class="py-3.5 px-4 text-slate-400">${c.created}</td>
+          <td class="py-3.5 px-4 text-right space-x-2">
+            <button onclick="deleteCustomer('${c.id}')" class="text-xs text-rose-500 hover:text-rose-700 font-medium">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function deleteCustomer(id) {
+      state.customers = state.customers.filter(c => c.id !== id);
+      if (supabaseClient) {
+        await supabaseClient.from('customers').delete().eq('id', id).catch(err => console.error(err));
+      }
+      saveState();
+      refreshAllAdminData();
+      showToast('Customer deleted.');
+    }
+
+    async function handleCustomerSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('cust-form-name').value.trim();
+      const email = document.getElementById('cust-form-email').value.trim();
+      const company = document.getElementById('cust-form-company').value.trim();
+      const phone = document.getElementById('cust-form-phone').value.trim();
+      const password = document.getElementById('cust-form-password').value || 'Pass@1234';
+
+      if (state.customers.some(c => c.email.toLowerCase() === email.toLowerCase())) {
+        showToast('Error: A customer with this email already exists.');
+        return;
+      }
+
+      const newCustomer = {
+        id: 'cust-' + Date.now(),
+        name,
+        email,
+        password,
+        company,
+        phone,
+        role: 'customer',
+        status: 'Active',
+        created: new Date().toISOString().slice(0, 10)
+      };
+
+      state.customers.push(newCustomer);
+      await saveState();
+      closeModal('customerModal');
+      refreshAllAdminData();
+      showToast('New customer saved to database.');
+    }
+
+    function renderProductsTable() {
+      const tbody = document.getElementById('products-table-body');
+      document.getElementById('products-count-subtitle').textContent = `${state.products.length} products`;
+
+      if (state.products.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-12 text-center text-slate-400 font-normal text-sm">No products found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = state.products.map(p => {
+        const planCount = state.plans.filter(plan => plan.productId === p.id).length;
+        return `
+          <tr class="hover:bg-slate-50/80 transition">
+            <td class="py-3.5 px-4">
+              <span class="font-medium text-slate-900 block">${p.name}</span>
+              ${p.variant ? `<span class="text-[11px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded font-mono">${p.variant}</span>` : ''}
+            </td>
+            <td class="py-3.5 px-4 text-slate-500">${p.category}</td>
+            <td class="py-3.5 px-4 text-indigo-600 font-medium">${planCount} plan(s)</td>
+            <td class="py-3.5 px-4 font-semibold text-slate-900">${formatCurrency(p.salesPrice)}</td>
+            <td class="py-3.5 px-4 text-slate-400">${p.created}</td>
+            <td class="py-3.5 px-4 text-right">
+              <button onclick="deleteProduct('${p.id}')" class="text-xs text-rose-500 hover:text-rose-700 font-medium">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function handleProductSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('prod-form-name').value.trim();
+      const category = document.getElementById('prod-form-category').value.trim();
+      const salesPrice = parseFloat(document.getElementById('prod-form-price').value) || 0;
+      const variant = document.getElementById('prod-form-variant').value.trim();
+
+      state.products.push({
+        id: 'prod-' + Date.now(),
+        name,
+        category: category || 'Software',
+        salesPrice,
+        variant,
+        created: new Date().toISOString().slice(0, 10)
+      });
+
+      saveState();
+      closeModal('productModal');
+      refreshAllAdminData();
+      showToast('Product added to catalog.');
+    }
+
+    async function deleteProduct(id) {
+      state.products = state.products.filter(p => p.id !== id);
+      state.plans = state.plans.filter(p => p.productId !== id);
+      if (supabaseClient) {
+        await supabaseClient.from('products').delete().eq('id', id).catch(err => console.error(err));
+      }
+      saveState();
+      refreshAllAdminData();
+      showToast('Product deleted.');
+    }
+
+    function renderPlansTable() {
+      const tbody = document.getElementById('plans-table-body');
+      document.getElementById('plans-count-subtitle').textContent = `${state.plans.length} plans`;
+
+      if (state.plans.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-12 text-center text-slate-400 font-normal text-sm">No plans found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = state.plans.map(p => {
+        const prod = state.products.find(pr => pr.id === p.productId);
+        return `
+          <tr class="hover:bg-slate-50/80 transition">
+            <td class="py-3.5 px-4 font-semibold text-slate-900">${p.name}</td>
+            <td class="py-3.5 px-4 text-slate-600">${prod ? prod.name : 'Product'}</td>
+            <td class="py-3.5 px-4 text-slate-500">${p.interval}</td>
+            <td class="py-3.5 px-4 font-medium text-slate-900">${formatCurrency(p.price)}</td>
+            <td class="py-3.5 px-4 text-slate-500">${p.taxRate}%</td>
+            <td class="py-3.5 px-4 text-right">
+              <button onclick="deletePlan('${p.id}')" class="text-xs text-rose-500 hover:text-rose-700 font-medium">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function handlePlanSubmit(e) {
+      e.preventDefault();
+      const productId = document.getElementById('plan-form-product').value;
+      const name = document.getElementById('plan-form-name').value.trim();
+      const interval = document.getElementById('plan-form-interval').value;
+      const price = parseFloat(document.getElementById('plan-form-price').value) || 0;
+      const taxRate = parseFloat(document.getElementById('plan-form-tax').value) || 0;
+
+      state.plans.push({
+        id: 'plan-' + Date.now(),
+        productId,
+        name,
+        interval,
+        price,
+        taxRate,
+        created: new Date().toISOString().slice(0, 10)
+      });
+
+      saveState();
+      closeModal('planModal');
+      refreshAllAdminData();
+      showToast('Billing plan created.');
+    }
+
+    async function deletePlan(id) {
+      state.plans = state.plans.filter(p => p.id !== id);
+      if (supabaseClient) {
+        await supabaseClient.from('plans').delete().eq('id', id).catch(err => console.error(err));
+      }
+      saveState();
+      refreshAllAdminData();
+      showToast('Plan removed.');
+    }
+
+    function renderQuotationsTable() {
+      const tbody = document.getElementById('quotations-table-body');
+      if (state.quotations.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center text-slate-400 font-normal text-sm">No quotations generated.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = state.quotations.map(q => {
+        const cust = state.customers.find(c => c.id === q.customerId);
+        const plan = state.plans.find(p => p.id === q.planId);
+        return `
+          <tr class="hover:bg-slate-50/80 transition">
+            <td class="py-3.5 px-4 font-mono font-medium text-slate-900">${q.ref}</td>
+            <td class="py-3.5 px-4 font-semibold text-slate-800">${cust ? cust.name : 'Unknown Customer'}</td>
+            <td class="py-3.5 px-4 text-slate-600">${plan ? plan.name : 'Custom Plan'}</td>
+            <td class="py-3.5 px-4 text-emerald-600 font-medium">${q.discount}% Off</td>
+            <td class="py-3.5 px-4 font-bold text-slate-900">${formatCurrency(q.total)}</td>
+            <td class="py-3.5 px-4 text-slate-500">${q.validUntil}</td>
+            <td class="py-3.5 px-4 text-right space-x-2">
+              <button onclick="convertQuoteToSubscription('${q.id}')" class="text-xs font-bold text-emerald-600 hover:text-emerald-800">Convert to Sub &rarr;</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function createFastQuote() {
+      if (state.customers.length === 0 || state.plans.length === 0) {
+        showToast('Please ensure you have at least 1 customer and 1 plan configured.');
+        return;
+      }
+      const ref = 'QUO-2026-0' + (state.quotations.length + 1);
+      state.quotations.push({
+        id: 'q-' + Date.now(),
+        ref,
+        customerId: state.customers[0].id,
+        planId: state.plans[0].id,
+        discount: 10,
+        total: state.plans[0].price * 0.9,
+        validUntil: '2026-11-30',
+        status: 'Sent'
+      });
+      saveState();
+      refreshAllAdminData();
+      showToast(`Created proposal quotation ${ref}`);
+    }
+
+    function convertQuoteToSubscription(quoteId) {
+      const q = state.quotations.find(item => item.id === quoteId);
+      if (!q) return;
+
+      const plan = state.plans.find(p => p.id === q.planId);
+      state.subscriptions.push({
+        id: 'sub-' + Date.now(),
+        customerId: q.customerId,
+        planId: q.planId,
+        qty: 1,
+        discount: q.discount,
+        amount: q.total,
+        status: 'Active',
+        period: plan ? `${plan.interval} Recurring` : 'Recurring',
+        created: new Date().toISOString().slice(0, 10)
+      });
+
+      state.quotations = state.quotations.filter(item => item.id !== quoteId);
+      if (supabaseClient) supabaseClient.from('quotations').delete().eq('id', quoteId).catch(err => console.error(err));
+      saveState();
+      refreshAllAdminData();
+      showToast(`Quotation ${q.ref} successfully converted to an active subscription.`);
+    }
+
+    function renderSubscriptionsTable() {
+      const tbody = document.getElementById('subscriptions-table-body');
+      document.getElementById('subs-count-subtitle').textContent = `${state.subscriptions.length} subscriptions`;
+
+      if (state.subscriptions.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-12 text-center text-slate-400 font-normal text-sm">No subscriptions found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = state.subscriptions.map(s => {
+        const cust = state.customers.find(c => c.id === s.customerId);
+        const plan = state.plans.find(p => p.id === s.planId);
+
+        return `
+          <tr class="hover:bg-slate-50/80 transition">
+            <td class="py-3.5 px-4 font-medium text-slate-900">${cust ? cust.name : 'Unknown'}</td>
+            <td class="py-3.5 px-4 text-slate-600">${plan ? plan.name : 'Custom Plan'} ${s.qty > 1 ? `(${s.qty} seats)` : ''}</td>
+            <td class="py-3.5 px-4 font-semibold text-slate-900">${formatCurrency(s.amount)}</td>
+            <td class="py-3.5 px-4">
+              <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${getStatusPillClass(s.status)}">
+                ${s.status}
+              </span>
+            </td>
+            <td class="py-3.5 px-4 text-slate-500">${s.period}</td>
+            <td class="py-3.5 px-4 text-right space-x-2">
+              ${getStateMachineActionBtn(s)}
+              <button onclick="cancelSubscription('${s.id}')" class="text-xs text-rose-600 hover:text-rose-800 font-semibold">Cancel</button>
+              <button onclick="deleteSubscription('${s.id}')" class="text-xs text-slate-400 hover:text-rose-700">Remove</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function getStatusPillClass(status) {
+      switch (status) {
+        case 'Draft': return 'bg-amber-50 text-amber-700 border border-amber-200/60';
+        case 'Quotation': return 'bg-yellow-50 text-yellow-700 border border-yellow-200/70';
+        case 'Confirmed': return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+        case 'Active': return 'bg-green-100 text-green-800 border border-green-200';
+        case 'Cancelled': return 'bg-rose-50 text-rose-700 border border-rose-200';
+        case 'Closed': return 'bg-indigo-50 text-indigo-600 border border-indigo-200';
+        default: return 'bg-slate-100 text-slate-700';
+      }
+    }
+
+    function getStateMachineActionBtn(sub) {
+      if (sub.status === 'Draft') return `<button onclick="advanceSubscription('${sub.id}', 'Quotation')" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Quote &rarr;</button>`;
+      if (sub.status === 'Quotation') return `<button onclick="advanceSubscription('${sub.id}', 'Confirmed')" class="text-xs text-emerald-600 hover:text-emerald-800 font-medium">Confirm &rarr;</button>`;
+      if (sub.status === 'Confirmed') return `<button onclick="advanceSubscription('${sub.id}', 'Active')" class="text-xs text-green-700 hover:text-green-900 font-bold">Activate &rarr;</button>`;
+      if (sub.status === 'Active') return `<button onclick="advanceSubscription('${sub.id}', 'Closed')" class="text-xs text-slate-500 hover:text-slate-800 font-medium">Close</button>`;
+      return '';
+    }
+
+    function advanceSubscription(id, nextState) {
+      const sub = state.subscriptions.find(s => s.id === id);
+      if (sub) {
+        sub.status = nextState;
+        saveState();
+        refreshAllAdminData();
+        showToast(`Subscription shifted to ${nextState}`);
+        if (state.userRole === 'customer') renderCustomerPortal();
+      }
+    }
+
+    function cancelSubscription(id) {
+      const sub = state.subscriptions.find(s => s.id === id);
+      if (!sub) return;
+      sub.status = 'Cancelled';
+      saveState();
+      refreshAllAdminData();
+      if (state.userRole === 'customer') renderCustomerPortal();
+      showToast('Subscription cancelled successfully.');
+    }
+
+    function calculateSubTotalPreview() {
+      const planId = document.getElementById('sub-form-plan').value;
+      const qty = parseInt(document.getElementById('sub-form-qty').value) || 1;
+      const plan = state.plans.find(p => p.id === planId);
+
+      if (!plan) {
+        document.getElementById('sub-form-preview-amt').textContent = '$0.00';
+        return 0;
+      }
+      const total = plan.price * qty * (1 + (plan.taxRate || 0) / 100);
+      const rounded = Math.round(total * 100) / 100;
+      document.getElementById('sub-form-preview-amt').textContent = formatCurrency(rounded);
+      return rounded;
+    }
+
+    function handleSubscriptionSubmit(e) {
+      e.preventDefault();
+      const customerId = document.getElementById('sub-form-customer').value;
+      const planId = document.getElementById('sub-form-plan').value;
+      const qty = parseInt(document.getElementById('sub-form-qty').value) || 1;
+      const status = document.getElementById('sub-form-status').value;
+      const plan = state.plans.find(p => p.id === planId);
+      const amount = calculateSubTotalPreview();
+
+      const newSub = {
+        id: 'sub-' + Date.now(),
+        customerId,
+        planId,
+        qty,
+        amount,
+        status,
+        period: `${plan.interval} Recurring`,
+        created: new Date().toISOString().slice(0, 10)
+      };
+
+      state.subscriptions.push(newSub);
+      saveState();
+      closeModal('subscriptionModal');
+      refreshAllAdminData();
+      showToast('Subscription created.');
+    }
+
+    async function deleteSubscription(id) {
+      state.subscriptions = state.subscriptions.filter(s => s.id !== id);
+      if (supabaseClient) {
+        await supabaseClient.from('subscriptions').delete().eq('id', id).catch(err => console.error(err));
+      }
+      saveState();
+      refreshAllAdminData();
+      if (state.userRole === 'customer') renderCustomerPortal();
+      showToast('Subscription deleted.');
+    }
+
+    function renderInvoicesTable() {
+      const tbody = document.getElementById('invoices-table-body');
+      document.getElementById('invoices-count-subtitle').textContent = `${state.invoices.length} invoices`;
+
+      const paidTotal = state.invoices.filter(i => i.status === 'Paid').reduce((a, b) => a + Number(b.total), 0);
+      const outstandingTotal = state.invoices.filter(i => i.status === 'Pending').reduce((a, b) => a + Number(b.total), 0);
+      const overdueTotal = state.invoices.filter(i => i.status === 'Overdue').reduce((a, b) => a + Number(b.total), 0);
+
+      document.getElementById('inv-stat-paid').textContent = formatCurrency(paidTotal);
+      document.getElementById('inv-stat-outstanding').textContent = formatCurrency(outstandingTotal);
+      document.getElementById('inv-stat-overdue').textContent = formatCurrency(overdueTotal);
+
+      if (state.invoices.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center text-slate-400 font-normal text-sm">No invoices found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = state.invoices.map(inv => {
+        const cust = state.customers.find(c => c.id === inv.customerId);
+        const badgeColor = inv.status === 'Paid' ? 'bg-emerald-50 text-emerald-700' : (inv.status === 'Overdue' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700');
+
+        return `
+          <tr class="hover:bg-slate-50/80 transition">
+            <td class="py-3.5 px-4 font-mono font-semibold text-slate-900">
+              <button onclick="viewInvoiceDoc('${inv.id}')" class="hover:text-indigo-600 underline">${inv.invoiceNumber}</button>
+            </td>
+            <td class="py-3.5 px-4 text-slate-700">${cust ? cust.name : 'Unknown'}</td>
+            <td class="py-3.5 px-4 text-slate-500">${inv.issued}</td>
+            <td class="py-3.5 px-4 text-slate-500">${inv.due}</td>
+            <td class="py-3.5 px-4 font-semibold text-slate-900">${formatCurrency(inv.total)}</td>
+            <td class="py-3.5 px-4"><span class="px-2.5 py-0.5 rounded-full text-xs font-semibold ${badgeColor}">${inv.status}</span></td>
+            <td class="py-3.5 px-4 text-right space-x-2">
+              <button onclick="viewInvoiceDoc('${inv.id}')" class="text-xs text-slate-600 hover:text-slate-900 font-medium">View</button>
+              ${inv.status !== 'Paid' ? `<button onclick="quickPayInvoice('${inv.id}')" class="text-xs text-indigo-600 hover:text-indigo-800 font-bold">Pay</button>` : ''}
+              <button onclick="deleteInvoice('${inv.id}')" class="text-xs text-rose-500 hover:text-rose-700 font-medium">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function markAllDueOverdue() {
+      let count = 0;
+      state.invoices.forEach(inv => {
+        if (inv.status === 'Pending') {
+          inv.status = 'Overdue';
+          count++;
+        }
+      });
+      saveState();
+      refreshAllAdminData();
+      showToast(`Flagged ${count} invoices as Overdue.`);
+    }
+
+    function quickPayInvoice(invoiceId) {
+      const inv = state.invoices.find(i => i.id === invoiceId);
+      if (!inv) return;
+      inv.status = 'Paid';
+      state.payments.push({
+        id: 'pay-' + Date.now(),
+        invoiceId: inv.id,
+        customerId: inv.customerId,
+        amount: inv.total,
+        method: 'Credit Card',
+        reference: 'TXN-' + Math.floor(100000 + Math.random() * 900000),
+        paymentDate: new Date().toISOString().slice(0, 10)
+      });
+      saveState();
+      refreshAllAdminData();
+      if (state.userRole === 'customer') {
+        renderCustomerPortal();
+      }
+      showToast(`Invoice ${inv.invoiceNumber} paid.`);
+    }
+
+    async function deleteInvoice(id) {
+      state.invoices = state.invoices.filter(i => i.id !== id);
+      if (supabaseClient) {
+        await supabaseClient.from('invoices').delete().eq('id', id).catch(err => console.error(err));
+      }
+      saveState();
+      refreshAllAdminData();
+      showToast('Invoice removed.');
+    }
+
+    function viewInvoiceDoc(invoiceId) {
+      const inv = state.invoices.find(i => i.id === invoiceId);
+      if (!inv) return;
+
+      const cust = state.customers.find(c => c.id === inv.customerId);
+      const sub = state.subscriptions.find(s => s.id === inv.subscriptionId);
+      const plan = sub ? state.plans.find(p => p.id === sub.planId) : null;
+      const prod = plan ? state.products.find(p => p.id === plan.productId) : null;
+
+      const sheet = document.getElementById('invoice-sheet');
+      sheet.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex justify-between items-start">
+            <div>
+              <h2 class="text-2xl font-bold tracking-tight text-slate-900">Presub / Brightloop Software</h2>
+              <p class="text-xs text-slate-500 mt-1">100 Tech Enterprise Blvd, Suite 400<br>San Francisco, CA 94107</p>
+            </div>
+            <div class="text-right">
+              <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold ${inv.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">
+                ${inv.status}
+              </span>
+              <p class="text-xl font-mono font-bold text-slate-900 mt-2">${inv.invoiceNumber}</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 py-4 border-y border-slate-100 text-xs">
+            <div>
+              <p class="font-bold text-slate-400 uppercase">Billed To</p>
+              <p class="font-semibold text-slate-900 mt-1 text-sm">${cust ? cust.name : 'Valued Customer'}</p>
+              <p class="text-slate-500">${cust ? (cust.company || '') : ''}</p>
+              <p class="text-slate-500">${cust ? (cust.email || '') : ''}</p>
+            </div>
+            <div class="text-right">
+              <p class="font-bold text-slate-400 uppercase">Dates & Payment Terms</p>
+              <p class="text-slate-600 mt-1"><span class="font-medium text-slate-700">Issued:</span> ${inv.issued}</p>
+              <p class="text-slate-600"><span class="font-medium text-slate-700">Due:</span> ${inv.due}</p>
+              <p class="text-slate-600"><span class="font-medium text-slate-700">Cycle:</span> Recurring Billing</p>
+            </div>
+          </div>
+
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="border-b border-slate-200 text-slate-500 font-semibold uppercase">
+                <th class="py-2">Item Description</th>
+                <th class="py-2 text-center">Qty</th>
+                <th class="py-2 text-right">Unit Price</th>
+                <th class="py-2 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr>
+                <td class="py-3">
+                  <span class="font-semibold text-slate-900 block">${prod ? prod.name : 'Software Subscription'}</span>
+                  <span class="text-slate-400">${plan ? plan.name : 'Recurring Tier'}</span>
+                </td>
+                <td class="py-3 text-center text-slate-600">${sub ? sub.qty : 1}</td>
+                <td class="py-3 text-right text-slate-600">${formatCurrency(plan ? plan.price : inv.total)}</td>
+                <td class="py-3 text-right font-medium text-slate-900">${formatCurrency(inv.subtotal || inv.total)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="border-t border-slate-200 pt-3 flex justify-end">
+            <div class="w-64 space-y-1.5 text-xs text-right">
+              <div class="flex justify-between text-slate-500">
+                <span>Subtotal:</span>
+                <span class="font-medium">${formatCurrency(inv.subtotal || (inv.total * 0.95))}</span>
+              </div>
+              <div class="flex justify-between text-slate-500">
+                <span>Taxes:</span>
+                <span class="font-medium">${formatCurrency(inv.tax || (inv.total * 0.05))}</span>
+              </div>
+              <div class="flex justify-between text-slate-900 font-bold text-base pt-2 border-t border-slate-100">
+                <span>Total Due:</span>
+                <span class="text-indigo-600">${formatCurrency(inv.total)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      openModal('printableInvoiceModal');
+    }
+
+    function renderPaymentsTable() {
+      const tbody = document.getElementById('payments-table-body');
+      document.getElementById('payments-count-subtitle').textContent = `${state.payments.length} payments recorded`;
+      const totalPayments = state.payments.reduce((a, b) => a + Number(b.amount || 0), 0);
+      document.getElementById('payments-stat-total').textContent = formatCurrency(totalPayments);
+
+      if (state.payments.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center text-slate-400 font-normal text-sm">No payments recorded.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = state.payments.map(p => {
+        const cust = state.customers.find(c => c.id === p.customerId);
+        const inv = state.invoices.find(i => i.id === p.invoiceId);
+        return `
+          <tr class="hover:bg-slate-50/80 transition">
+            <td class="py-3.5 px-4 font-mono font-medium text-slate-900">${inv ? inv.invoiceNumber : 'N/A'}</td>
+            <td class="py-3.5 px-4 text-slate-700">${cust ? cust.name : 'Customer'}</td>
+            <td class="py-3.5 px-4 font-semibold text-emerald-700">${formatCurrency(p.amount)}</td>
+            <td class="py-3.5 px-4 text-slate-600">${p.method}</td>
+            <td class="py-3.5 px-4 font-mono text-xs text-slate-500">${p.reference || '-'}</td>
+            <td class="py-3.5 px-4 text-slate-500">${p.paymentDate}</td>
+            <td class="py-3.5 px-4"><span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">Settled</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function onInvoiceSelectionChange() {
+      const invId = document.getElementById('pay-form-invoice').value;
+      const inv = state.invoices.find(i => i.id === invId);
+      if (inv) {
+        document.getElementById('pay-form-amount').value = inv.total;
+      }
+    }
+
+    function handlePaymentSubmit(e) {
+      e.preventDefault();
+      const invoiceId = document.getElementById('pay-form-invoice').value;
+      const amount = parseFloat(document.getElementById('pay-form-amount').value) || 0;
+      const method = document.getElementById('pay-form-method').value;
+
+      const inv = state.invoices.find(i => i.id === invoiceId);
+      if (!inv) return;
+
+      inv.status = 'Paid';
+      state.payments.push({
+        id: 'pay-' + Date.now(),
+        invoiceId,
+        customerId: inv.customerId,
+        amount,
+        method,
+        reference: 'TXN-' + Math.floor(100000 + Math.random() * 900000),
+        paymentDate: new Date().toISOString().slice(0, 10)
+      });
+
+      saveState();
+      closeModal('paymentModal');
+      refreshAllAdminData();
+      showToast('Payment recorded successfully.');
+    }
+
+    function renderDiscountsAndTaxes() {
+      const dWrap = document.getElementById('discounts-list-wrap');
+      const tWrap = document.getElementById('tax-rules-list-wrap');
+
+      dWrap.innerHTML = state.discounts.map(d => `
+        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+          <div>
+            <span class="font-semibold text-slate-800 text-sm block">${d.name}</span>
+            <span class="text-xs text-slate-400">Min seats: ${d.minSeats}</span>
+          </div>
+          <span class="text-sm font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+            ${d.type === 'Percentage' ? `${d.value}% Off` : `$${d.value} Flat`}
+          </span>
+        </div>
+      `).join('');
+
+      tWrap.innerHTML = state.taxes.map(t => `
+        <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+          <div>
+            <span class="font-semibold text-slate-800 text-sm block">${t.name}</span>
+            <span class="text-xs text-slate-400">Region: ${t.country}</span>
+          </div>
+          <span class="text-sm font-bold text-slate-800">${t.rate}%</span>
+        </div>
+      `).join('');
+    }
+
+    let intervalChartInstance = null;
+    let plansChartInstance = null;
+
+    function renderReportsCharts() {
+      const activeSubs = state.subscriptions.filter(s => s.status === 'Active');
+      const paidTotal = state.payments.reduce((a, b) => a + Number(b.amount || 0), 0);
+      const outstandingTotal = state.invoices.filter(i => i.status === 'Pending').reduce((a, b) => a + Number(b.total || 0), 0);
+      const overdueTotal = state.invoices.filter(i => i.status === 'Overdue').reduce((a, b) => a + Number(b.total || 0), 0);
+
+      document.getElementById('rep-total-revenue').textContent = formatCurrency(paidTotal);
+      document.getElementById('rep-outstanding').textContent = formatCurrency(outstandingTotal);
+      document.getElementById('rep-overdue').textContent = formatCurrency(overdueTotal);
+      document.getElementById('rep-active-subs').textContent = activeSubs.length;
+
+      const intervalCounts = {};
+      activeSubs.forEach(s => {
+        const plan = state.plans.find(p => p.id === s.planId);
+        const interval = plan ? plan.interval : 'Monthly';
+        intervalCounts[interval] = (intervalCounts[interval] || 0) + 1;
+      });
+
+      const intervalCanvas = document.getElementById('chart-interval');
+      if (intervalCanvas) {
+        if (intervalChartInstance) intervalChartInstance.destroy();
+        intervalChartInstance = new Chart(intervalCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: Object.keys(intervalCounts).length ? Object.keys(intervalCounts) : ['Monthly'],
+            datasets: [{
+              data: Object.values(intervalCounts).length ? Object.values(intervalCounts) : [1],
+              backgroundColor: ['#4f46e5', '#06b6d4', '#10b981', '#f59e0b']
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+      }
+
+      const planRevenues = {};
+      state.invoices.filter(i => i.status === 'Paid').forEach(inv => {
+        const sub = state.subscriptions.find(s => s.id === inv.subscriptionId);
+        if (sub) {
+          const plan = state.plans.find(p => p.id === sub.planId);
+          const pName = plan ? plan.name : 'Standard';
+          planRevenues[pName] = (planRevenues[pName] || 0) + Number(inv.total);
+        }
+      });
+
+      const plansCanvas = document.getElementById('chart-plans');
+      if (plansCanvas) {
+        if (plansChartInstance) plansChartInstance.destroy();
+        plansChartInstance = new Chart(plansCanvas, {
+          type: 'bar',
+          data: {
+            labels: Object.keys(planRevenues).length ? Object.keys(planRevenues) : ['No Data'],
+            datasets: [{
+              label: 'Revenue ($)',
+              data: Object.values(planRevenues).length ? Object.values(planRevenues) : [0],
+              backgroundColor: '#4338ca',
+              borderRadius: 6
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+      }
+    }
+
+    // =========================================================================
+    // CUSTOMER PORTAL ENGINE & SUBSCRIPTION MANAGEMENT
+    // =========================================================================
+    function renderCustomerPortal() {
+      const cust = state.loggedInCustomer;
+      if (!cust) return;
+
+      document.getElementById('portal-user-headline').textContent = `Welcome back, ${cust.name}`;
+
+      const mySubs = state.subscriptions.filter(s => s.customerId === cust.id);
+      document.getElementById('portal-metric-active-subs').textContent = mySubs.filter(s => s.status === 'Active').length;
+
+      const myInvoices = state.invoices.filter(i => i.customerId === cust.id);
+      const outstanding = myInvoices.filter(i => i.status === 'Pending').reduce((a, b) => a + Number(b.total), 0);
+      document.getElementById('portal-metric-outstanding').textContent = formatCurrency(outstanding);
+
+      // Subscriptions list
+      const subsContainer = document.getElementById('customer-subscriptions-list');
+      if (mySubs.length === 0) {
+        subsContainer.innerHTML = `<div class="p-4 bg-slate-50 rounded-xl text-center text-xs text-slate-500">You currently do not have any subscriptions. Click "Add Subscription" above to get started.</div>`;
+      } else {
+        subsContainer.innerHTML = mySubs.map(s => {
+          const plan = state.plans.find(p => p.id === s.planId);
+          const isActive = s.status === 'Active';
+          return `
+            <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
+              <div>
+                <p class="font-bold text-slate-900 text-sm">${plan ? plan.name : 'Subscription'}</p>
+                <p class="text-xs text-slate-500 mt-0.5">${s.period} &bull; ${s.qty} seat(s)</p>
+              </div>
+              <div class="text-right space-y-1">
+                <span class="text-sm font-bold text-indigo-700 block">${formatCurrency(s.amount)}</span>
+                <span class="inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${getStatusPillClass(s.status)}">${s.status}</span>
+                <div class="pt-1">
+                  ${isActive ? `<button onclick="customerCancelSubscription('${s.id}')" class="text-[11px] text-rose-600 hover:underline font-semibold">Cancel</button>` : `<button onclick="deleteSubscription('${s.id}'); renderCustomerPortal();" class="text-[11px] text-slate-400 hover:text-rose-600">Remove</button>`}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Available Plans Catalog
+      const plansContainer = document.getElementById('customer-available-plans');
+      plansContainer.innerHTML = state.plans.map(p => `
+        <div class="p-3.5 rounded-xl border border-slate-200 bg-white flex items-center justify-between">
+          <div>
+            <h4 class="font-semibold text-slate-900 text-sm">${p.name}</h4>
+            <span class="text-xs text-slate-500">${p.interval} cycle &bull; Tax: ${p.taxRate}%</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="font-bold text-slate-900 text-sm">${formatCurrency(p.price)}</span>
+            <button onclick="openCustomerSubscribeModalWithPlan('${p.id}')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm">
+              Subscribe
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      // Invoices list
+      const invContainer = document.getElementById('customer-invoices-list');
+      if (myInvoices.length === 0) {
+        invContainer.innerHTML = `<div class="p-4 bg-slate-50 rounded-xl text-center text-xs text-slate-500">No invoices generated yet.</div>`;
+      } else {
+        invContainer.innerHTML = myInvoices.map(inv => `
+          <div class="p-3.5 rounded-xl border border-slate-200 bg-white flex items-center justify-between">
+            <div>
+              <p class="font-mono font-semibold text-slate-900 text-sm">${inv.invoiceNumber}</p>
+              <p class="text-xs text-slate-400">Due: ${inv.due}</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="font-bold text-sm text-slate-900">${formatCurrency(inv.total)}</span>
+              <button onclick="viewInvoiceDoc('${inv.id}')" class="px-2.5 py-1 text-xs font-semibold bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100">View / PDF</button>
+              ${inv.status !== 'Paid' ? `<button onclick="quickPayInvoice('${inv.id}')" class="px-2.5 py-1 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Pay Now</button>` : ''}
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // Payments list
+      const myPayments = state.payments.filter(p => p.customerId === cust.id);
+      const payContainer = document.getElementById('customer-payments-list');
+      if (myPayments.length === 0) {
+        payContainer.innerHTML = `<div class="p-4 bg-slate-50 rounded-xl text-center text-xs text-slate-500">No payments recorded.</div>`;
+      } else {
+        payContainer.innerHTML = myPayments.map(p => `
+          <div class="p-3 rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-between text-xs">
+            <div>
+              <span class="font-mono font-semibold text-slate-800 block">${p.reference}</span>
+              <span class="text-slate-400">${p.method} &bull; ${p.paymentDate}</span>
+            </div>
+            <span class="font-bold text-emerald-700 text-sm">${formatCurrency(p.amount)}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    function openCustomerSubscribeModal() {
+      const planSelect = document.getElementById('cust-sub-plan');
+      planSelect.innerHTML = state.plans.map(p => `<option value="${p.id}">${p.name} - $${p.price}/${p.interval}</option>`).join('');
+      document.getElementById('cust-sub-qty').value = 1;
+      calculateCustomerSubTotalPreview();
+      openModal('customerSubscribeModal');
+    }
+
+    function openCustomerSubscribeModalWithPlan(planId) {
+      openCustomerSubscribeModal();
+      document.getElementById('cust-sub-plan').value = planId;
+      calculateCustomerSubTotalPreview();
+    }
+
+    function calculateCustomerSubTotalPreview() {
+      const planId = document.getElementById('cust-sub-plan').value;
+      const qty = parseInt(document.getElementById('cust-sub-qty').value) || 1;
+      const plan = state.plans.find(p => p.id === planId);
+      if (!plan) {
+        document.getElementById('cust-sub-preview-amt').textContent = '$0.00';
+        return 0;
+      }
+      const total = plan.price * qty * (1 + (plan.taxRate || 0) / 100);
+      const rounded = Math.round(total * 100) / 100;
+      document.getElementById('cust-sub-preview-amt').textContent = formatCurrency(rounded);
+      return rounded;
+    }
+
+    function handleCustomerSubscribeSubmit(e) {
+      e.preventDefault();
+      const cust = state.loggedInCustomer;
+      const planId = document.getElementById('cust-sub-plan').value;
+      const qty = parseInt(document.getElementById('cust-sub-qty').value) || 1;
+      const plan = state.plans.find(p => p.id === planId);
+      if (!plan || !cust) return;
+
+      const total = plan.price * qty * (1 + (plan.taxRate || 0) / 100);
+      const amountRounded = Math.round(total * 100) / 100;
+
+      const newSub = {
+        id: 'sub-' + Date.now(),
+        customerId: cust.id,
+        planId: plan.id,
+        qty,
+        amount: amountRounded,
+        status: 'Active',
+        period: `${plan.interval} Recurring`,
+        created: new Date().toISOString().slice(0, 10)
+      };
+
+      state.subscriptions.push(newSub);
+
+      // Auto-generate invoice
+      const newInv = {
+        id: 'inv-' + Date.now(),
+        invoiceNumber: `INV-${Math.floor(1000 + Math.random() * 9000)}`,
+        customerId: cust.id,
+        subscriptionId: newSub.id,
+        issued: new Date().toISOString().slice(0, 10),
+        due: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
+        subtotal: plan.price * qty,
+        tax: Math.round(((plan.price * qty) * ((plan.taxRate || 0) / 100)) * 100) / 100,
+        total: amountRounded,
+        status: 'Pending'
+      };
+      state.invoices.push(newInv);
+
+      saveState();
+      closeModal('customerSubscribeModal');
+      renderCustomerPortal();
+      showToast(`Successfully subscribed to ${plan.name}! Initial invoice generated.`);
+    }
+
+    function customerCancelSubscription(subId) {
+      const sub = state.subscriptions.find(s => s.id === subId);
+      if (!sub) return;
+      sub.status = 'Cancelled';
+      saveState();
+      renderCustomerPortal();
+      showToast('Subscription cancelled successfully.');
+    }
+
+    // =========================================================================
+    // MODAL HANDLERS
+    // =========================================================================
+    function openModal(id) {
+      if (id === 'supabaseConfigModal') {
+        document.getElementById('sb-config-url').value = (SUPABASE_URL && SUPABASE_URL !== 'YOUR_SUPABASE_PROJECT_URL') ? SUPABASE_URL : '';
+        document.getElementById('sb-config-key').value = (SUPABASE_ANON_KEY && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') ? SUPABASE_ANON_KEY : '';
+      }
+
+      if (id === 'planModal') {
+        const prodSelect = document.getElementById('plan-form-product');
+        prodSelect.innerHTML = state.products.map(p => `<option value="${p.id}">${p.name} (${p.category})</option>`).join('');
+      }
+
+      if (id === 'subscriptionModal') {
+        const custSelect = document.getElementById('sub-form-customer');
+        const planSelect = document.getElementById('sub-form-plan');
+        custSelect.innerHTML = state.customers.map(c => `<option value="${c.id}">${c.name} (${c.company || 'Personal'})</option>`).join('');
+        planSelect.innerHTML = state.plans.map(p => `<option value="${p.id}">${p.name} - $${p.price}/${p.interval}</option>`).join('');
+        calculateSubTotalPreview();
+      }
+
+      if (id === 'paymentModal') {
+        const invSelect = document.getElementById('pay-form-invoice');
+        const unpaid = state.invoices.filter(i => i.status !== 'Paid');
+        if (unpaid.length === 0) {
+          invSelect.innerHTML = '<option value="">No unpaid invoices</option>';
+          document.getElementById('pay-form-amount').value = '';
+        } else {
+          invSelect.innerHTML = unpaid.map(i => `<option value="${i.id}">${i.invoiceNumber} - $${i.total}</option>`).join('');
+          onInvoiceSelectionChange();
+        }
+      }
+
+      const modal = document.getElementById(id);
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeModal(id) {
+      const modal = document.getElementById(id);
+      if (modal) modal.classList.add('hidden');
+    }
+
+    // =========================================================================
+    // INITIALIZATION
+    // =========================================================================
+    window.onload = async function() {
+      await loadState();
+      if (state.userRole === 'admin') {
+        launchAdminDashboard();
+      } else if (state.userRole === 'customer' && state.loggedInCustomer) {
+        launchCustomerPortal(state.loggedInCustomer);
+      } else {
+        showLandingView();
+      }
+      lucide.createIcons();
+    };
+  </script>
+</body>
+</html>
